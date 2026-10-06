@@ -1161,24 +1161,8 @@ ${JSON.stringify(configToSend, null, 2)}
       sendTelToRenderer(number);
     }
 
-    // Log des devices media disponibles après chargement
-    try {
-      mainWindow.webContents.executeJavaScript(`
-        navigator.mediaDevices.enumerateDevices().then(devices => {
-          console.log('🎤🔊 Devices détectés:', devices.length);
-          devices.forEach(device => {
-            console.log('  -', device.kind, ':', device.label || 'Sans nom');
-          });
-          return devices.length;
-        });
-      `).then(devices => {
-        console.log(`📱 Total devices media: ${devices}`);
-      }).catch(err => {
-        console.error('❌ Erreur énumération devices:', err);
-      });
-    } catch (err) {
-      console.error('❌ Erreur énumération devices:', err);
-    }
+    // Log des devices media disponibles désactivé
+    // (enumerateDevices() déclenche Continuity Camera sur macOS)
   });
 
   // Media permissions - accorder toutes les permissions media
