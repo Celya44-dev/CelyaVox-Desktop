@@ -1775,12 +1775,8 @@ app.whenReady().then(async () => {
         console.log('🎤 macOS microphone access granted:', micGranted);
       }
 
-      const camStatus = systemPreferences.getMediaAccessStatus('camera');
-      console.log('📷 macOS camera access status:', camStatus);
-      if (camStatus !== 'granted') {
-        const camGranted = await systemPreferences.askForMediaAccess('camera');
-        console.log('📷 macOS camera access granted:', camGranted);
-      }
+      // Demande automatique de caméra supprimée
+      // L'accès caméra sera demandé SEULEMENT si l'utilisateur sélectionne vidéo dans un appel
     } catch (error) {
       console.warn('⚠️ Impossible de demander les autorisations media macOS:', error);
     }

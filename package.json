@@ -180,8 +180,7 @@
       "entitlements": "assets/entitlements.mac.plist",
       "entitlementsInherit": "assets/entitlements.mac.plist",
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "CelyaVox a besoin d'accéder au microphone pour les appels audio.",
-        "NSCameraUsageDescription": "CelyaVox a besoin d'accéder à la caméra pour les appels vidéo."
+        "NSMicrophoneUsageDescription": "CelyaVox a besoin d'accéder au microphone pour les appels audio."
       },
       "gatekeeperAssess": false,
       "target": [
