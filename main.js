@@ -935,6 +935,8 @@ app.commandLine.appendSwitch('enable-media-stream');
 app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling');
 // Forcer l'énumération des devices audio même en RDP
 app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns');
+// Désactiver la capture vidéo - aucune demande vidéo ne sera acceptée
+app.commandLine.appendSwitch('disable-features', 'VideoCapture');
 
 // ----------------------
 // Create main window
