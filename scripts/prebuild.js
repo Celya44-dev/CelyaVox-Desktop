@@ -81,6 +81,11 @@ if (env === 'dev') {
   
   packageJson.build.deb.maintainer = `${packageJson.author.name} <${packageJson.author.email}>`;
   
+  // Configurer macOS en mode dev
+  packageJson.build.mac = packageJson.build.mac || {};
+  packageJson.build.mac.bundleVersion = packageJson.version;
+  packageJson.build.mac.artifactName = '${productName}-${version}.${ext}';  // CelyaVox-dev-X.Y.Z.dmg
+  
   // Définir l'environnement par défaut pour l'exécutable
   packageJson.config.environment = 'dev';
   
@@ -89,7 +94,7 @@ if (env === 'dev') {
   console.log('✅ Mode DEV configuré');
   console.log('   - Product Name: CelyaVox-dev');
   console.log('   - App ID: fr.celya.celyavox.dev');
-  console.log('   - Artifacts: celyavox-dev-*');
+  console.log('   - Artifacts: celyavox-dev-* (Linux), CelyaVox-dev-*.dmg (macOS)');
   console.log('   - Server: https://freepbx17-dev.celya.fr/celyavox');
 } else {
   packageJson.build.productName = 'CelyaVox';  // Dossier userData
@@ -107,13 +112,17 @@ if (env === 'dev') {
   
   packageJson.build.deb.maintainer = `${packageJson.author.name} <${packageJson.author.email}>`;
   
+  // Configurer macOS en mode prod
+  packageJson.build.mac = packageJson.build.mac || {};
+  if (packageJson.build.mac?.artifactName) delete packageJson.build.mac.artifactName;
+  
   // Définir l'environnement par défaut pour l'exécutable
   packageJson.config.environment = 'prod';
   
   console.log('✅ Mode PROD configuré');
   console.log('   - Product Name: CelyaVox');
   console.log('   - App ID: fr.celya.celyavox');
-  console.log('   - Artifacts: celyavox-*');
+  console.log('   - Artifacts: celyavox-* (Linux), CelyaVox-*.dmg (macOS)');
   console.log('   - Server: https://celyavox.celya.fr/phone');
 }
 
