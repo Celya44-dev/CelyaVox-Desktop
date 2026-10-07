@@ -930,7 +930,8 @@ app.commandLine.appendSwitch('disable-setuid-sandbox');
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 // Forcer l'accès aux devices media (crucial pour RDP)
-app.commandLine.appendSwitch('enable-usermedia-screen-capturing');
+// COMMENTÉ: enable-usermedia-screen-capturing peut déclencher le scan vidéo
+// app.commandLine.appendSwitch('enable-usermedia-screen-capturing');
 app.commandLine.appendSwitch('enable-media-stream');
 app.commandLine.appendSwitch('disable-features', 'HardwareMediaKeyHandling');
 // Forcer l'énumération des devices audio même en RDP
@@ -1170,23 +1171,30 @@ ${JSON.stringify(configToSend, null, 2)}
   // Media permissions - accorder toutes les permissions media
   mainWindow.webContents.session.setPermissionRequestHandler((webContents, permission, callback) => {
     console.log('🔐 Permission demandée:', permission);
-    const allowedPermissions = ['media', 'mediaDevices', 'video', 'audio', 'audioCapture', 'videoCapture', 'microphone', 'camera'];
-    if (allowedPermissions.includes(permission)) {
+    const allowedPermissions = ['media', 'mediaDevices', 'audio', 'audioCapture', 'microphone'];
+    const deniedPermissions = ['video', 'videoCapture', 'camera'];
+    if (deniedPermissions.includes(permission)) {
+      console.log('❌ Permission vidéo refusée:', permission);
+      callback(false);
+    } else if (allowedPermissions.includes(permission)) {
       console.log('✅ Permission accordée:', permission);
       callback(true);
     } else {
-      console.log('❌ Permission refusée:', permission);
-      callback(false);
+      console.log('✅ Permission accordée par défaut:', permission);
+      callback(true);
     }
   });
   
-  // Forcer les permissions media
+  // Forcer les permissions media (SAUF vidéo/caméra)
   mainWindow.webContents.session.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
     console.log('🔍 Permission check:', permission, 'from', requestingOrigin);
-    if (permission === 'media' || permission.includes('audio') || permission.includes('video')) {
-      return true;
+    const deniedPermissions = ['video', 'videoCapture', 'camera'];
+    if (deniedPermissions.includes(permission)) {
+      console.log('❌ Permission vidéo refusée:', permission);
+      return false;
     }
-    return true; // Autoriser tout pour le debug
+    // Accepter tout le reste
+    return true;
   });
 
   // Log all network requests
@@ -1770,19 +1778,24 @@ app.whenReady().then(async () => {
 
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
     console.log('🔐 Permission globale demandée:', permission);
-    const allowedPermissions = ['media', 'mediaDevices', 'video', 'audio', 'audioCapture', 'videoCapture'];
-    if (allowedPermissions.includes(permission)) {
+    const deniedPermissions = ['video', 'videoCapture', 'camera'];
+    if (deniedPermissions.includes(permission)) {
+      console.log('❌ Permission vidéo refusée (global):', permission);
+      callback(false);
+    } else {
       console.log('✅ Permission globale accordée:', permission);
       callback(true);
-    } else {
-      console.log('⚠️ Permission inconnue accordée pour debug:', permission);
-      callback(true); // Autoriser tout pour le debug
     }
   });
   
   session.defaultSession.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
     console.log('🔍 Permission check globale:', permission, 'from', requestingOrigin);
-    return true; // Autoriser tout pour le debug
+    const deniedPermissions = ['video', 'videoCapture', 'camera'];
+    if (deniedPermissions.includes(permission)) {
+      console.log('❌ Permission vidéo refusée (global check):', permission);
+      return false;
+    }
+    return true; // Autoriser tout le reste
   });
 
   // Intercepter les requêtes pour ajouter cache buster aux ressources JS/CSS
