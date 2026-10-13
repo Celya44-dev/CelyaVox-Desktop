@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Custom WiX configuration for CelyaVox MSI installer
+     This file is included by electron-builder to add custom post-installation hooks -->
+
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <!-- Custom Action to execute PowerShell post-installation script -->
+    <CustomAction 
+      Id="RunPostInstallScript" 
+      Directory="INSTALLFOLDER" 
+      ExeCommand="powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]postinstall_windows.ps1&quot; -InstallDir &quot;[INSTALLFOLDER]&quot;"
+      Execute="deferred" 
+      Impersonate="yes" 
+      Return="ignore" />
+    
+    <!-- Execute the custom action after InstallFiles -->
+    <InstallExecuteSequence>
+      <Custom Action="RunPostInstallScript" After="InstallFiles">
+        <![CDATA[NOT Installed]]>
+      </Custom>
+    </InstallExecuteSequence>
+  </Fragment>
+</Wix>
