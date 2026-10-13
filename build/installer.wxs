@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+  <Fragment>
+    <!-- Créer un CustomAction qui exécute le batch qui lance PowerShell -->
+    <CustomAction 
+      Id="RunPostInstallScript"
+      Directory="INSTALLFOLDER"
+      ExeCommand="cmd.exe /c &quot;[INSTALLFOLDER]postinstall_windows.bat&quot;"
+      Execute="deferred"
+      Impersonate="no"
+      Return="ignore" />
+  </Fragment>
+
+  <Fragment>
+    <InstallExecuteSequence>
+      <!-- Exécuter après installation des fichiers, uniquement pour nouvelle installation -->
+      <Custom Action="RunPostInstallScript" After="InstallFiles">NOT Installed</Custom>
+    </InstallExecuteSequence>
+  </Fragment>
+</Wix>

@@ -182,7 +182,12 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "perMachine": true,
-      "runAfterFinish": true
+      "runAfterFinish": true,
+      "additionalWixArgs": [
+        "-ext", "WixUIExtension",
+        "-ext", "WixUtilExtension",
+        "-ext", "WixVSExtension"
+      ]
     },
     "mac": {
       "icon": "assets/app.icns",
