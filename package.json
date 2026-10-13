@@ -185,8 +185,7 @@
       "runAfterFinish": true,
       "additionalWixArgs": [
         "-ext", "WixUIExtension",
-        "-ext", "WixUtilExtension",
-        "-ext", "WixVSExtension"
+        "-ext", "WixUtilExtension"
       ]
     },
     "mac": {
