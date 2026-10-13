@@ -137,6 +137,16 @@
         "sha256"
       ],
       "verifyUpdateCodeSignature": false,
+      "extraFiles": [
+        {
+          "from": "postinstall_windows.ps1",
+          "to": "postinstall_windows.ps1"
+        },
+        {
+          "from": "postinstall_windows.bat",
+          "to": "postinstall_windows.bat"
+        }
+      ],
       "target": [
         {
           "target": "nsis",
@@ -172,7 +182,10 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "perMachine": true,
-      "runAfterFinish": true
+      "runAfterFinish": true,
+      "extraMetadata": {
+        "main": "main.js"
+      }
     },
     "mac": {
       "icon": "assets/app.icns",

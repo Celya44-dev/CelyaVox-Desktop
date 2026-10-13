@@ -4,17 +4,29 @@
 
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Fragment>
-    <!-- Custom Action to execute PowerShell post-installation script -->
+    <!-- Custom Action 1: Set property with install folder (immediate) -->
+    <CustomAction 
+      Id="SetInstallDirProperty" 
+      Property="POSTINSTALL_DIR" 
+      Value="[INSTALLFOLDER]" 
+      Execute="immediate" />
+    
+    <!-- Custom Action 2: Execute PowerShell post-installation script (deferred) -->
     <CustomAction 
       Id="RunPostInstallScript" 
-      Directory="INSTALLFOLDER" 
-      ExeCommand="powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File &quot;[INSTALLFOLDER]postinstall_windows.ps1&quot; -InstallDir &quot;[INSTALLFOLDER]&quot;"
+      BinaryKey="WixCA"
+      DllEntry="WixQuietExec"
       Execute="deferred" 
-      Impersonate="yes" 
-      Return="ignore" />
+      Impersonate="no"
+      Return="ignore">
+      powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "[INSTALLFOLDER]postinstall_windows.ps1" -InstallDir "[INSTALLFOLDER]"
+    </CustomAction>
     
-    <!-- Execute the custom action after InstallFiles -->
+    <!-- Execute custom actions in sequence -->
     <InstallExecuteSequence>
+      <Custom Action="SetInstallDirProperty" Before="RunPostInstallScript">
+        <![CDATA[NOT Installed]]>
+      </Custom>
       <Custom Action="RunPostInstallScript" After="InstallFiles">
         <![CDATA[NOT Installed]]>
       </Custom>
