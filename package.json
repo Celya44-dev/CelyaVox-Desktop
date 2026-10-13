@@ -182,10 +182,7 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "perMachine": true,
-      "runAfterFinish": true,
-      "extraMetadata": {
-        "main": "main.js"
-      }
+      "runAfterFinish": true
     },
     "mac": {
       "icon": "assets/app.icns",
