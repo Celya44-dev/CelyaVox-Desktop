@@ -1,90 +1,91 @@
-# postinstall_windows.ps1 - Script post-installation pour Windows (NSIS)
-# Note: Ce script s'exécute en tant qu'administrateur système
-# Les fichiers de configuration utilisateur seront créés par l'application 
-# au premier lancement, pas par le programme d'installation
+# postinstall_windows.ps1 - Script post-installation pour Windows
 
 param(
     [string]$InstallDir = ""
 )
 
-Write-Host "[postinstall] Installation de CelyaVox réussie" -ForegroundColor Green
-
-# Enregistrer le protocole tel: dans le registre Windows
-# Cela permet aux applications (navigateurs, etc.) de passer les liens tel: à CelyaVox
-# ET de montrer l'application dans Paramètres Windows
+Write-Host "[postinstall] Installation de CelyaVox reussie" -ForegroundColor Green
 
 try {
     $AppPath = Join-Path $InstallDir "CelyaVox.exe"
-    $AppId = "fr.celya.celyavox"
     $ProgId = "CelyaVox.tel"
     
-    Write-Host "📝 Enregistrement en cours..."
-    Write-Host "   App Path: $AppPath"
-    Write-Host "   App ID: $AppId"
-    Write-Host "   ProgId: $ProgId"
+    Write-Host "Enregistrement en cours..."
+    Write-Host "App Path: $AppPath"
+    Write-Host "ProgId: $ProgId"
     
-    # ===== 1. Enregistrer l'application dans App Paths =====
-    $AppPathsKey = "HKCU:\Software\Microsoft\Windows\CurrentVersion\App Paths\CelyaVox.exe"
-    New-Item -Path $AppPathsKey -Force | Out-Null
-    Set-ItemProperty -Path $AppPathsKey -Name "(Default)" -Value "$AppPath" -Force
-    Write-Host "✅ Enregistré dans App Paths"
+    # Verifier si on a les droits admin
+    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
     
-    # ===== 2. Enregistrer le ProgId pour CelyaVox.tel =====
-    $ProgIdPath = "HKCU:\Software\Classes\$ProgId"
-    New-Item -Path $ProgIdPath -Force | Out-Null
-    Set-ItemProperty -Path $ProgIdPath -Name "(Default)" -Value "Telephone Link" -Force
+    if (-not $isAdmin) {
+        Write-Host "ATTENTION: Ce script necessite les droits administrateur pour HKLM"
+        Write-Host "Continuant avec HKCU seulement..."
+    }
     
-    # Icône (optionnel mais amélioré l'apparence dans Paramètres)
-    New-Item -Path "$ProgIdPath\DefaultIcon" -Force | Out-Null
-    Set-ItemProperty -Path "$ProgIdPath\DefaultIcon" -Name "(Default)" -Value "$AppPath,0" -Force
+    # ===== HKLM (Systeme) - Priorite pour Windows =====
+    Write-Host "Enregistrement dans HKLM (systeme)..."
+    
+    # 1. Enregistrer dans RegisteredApplications
+    New-Item -Path "HKLM:\Software\RegisteredApplications" -Force -ErrorAction SilentlyContinue | Out-Null
+    Set-ItemProperty -Path "HKLM:\Software\RegisteredApplications" -Name "CelyaVox" -Value "Software\Classes\Applications\CelyaVox.exe\Capabilities" -Force -ErrorAction SilentlyContinue
+    Write-Host "  Enregistre dans RegisteredApplications"
+    
+    # 2. Enregistrer les Capabilities
+    $CapabilitiesPathHKLM = "HKLM:\Software\Classes\Applications\CelyaVox.exe\Capabilities"
+    New-Item -Path $CapabilitiesPathHKLM -Force -ErrorAction SilentlyContinue | Out-Null
+    Set-ItemProperty -Path $CapabilitiesPathHKLM -Name "ApplicationDescription" -Value "Telephone and VoIP application" -Force -ErrorAction SilentlyContinue
+    Set-ItemProperty -Path $CapabilitiesPathHKLM -Name "ApplicationName" -Value "CelyaVox" -Force -ErrorAction SilentlyContinue
+    
+    # Enregistrer le support du protocole tel:
+    $UrlAssocPathHKLM = "$CapabilitiesPathHKLM\URLAssociations"
+    New-Item -Path $UrlAssocPathHKLM -Force -ErrorAction SilentlyContinue | Out-Null
+    Set-ItemProperty -Path $UrlAssocPathHKLM -Name "tel" -Value $ProgId -Force -ErrorAction SilentlyContinue
+    Write-Host "  Capacites enregistrees"
+    
+    # 3. Enregistrer le ProgId
+    $ProgIdPathHKLM = "HKLM:\Software\Classes\$ProgId"
+    New-Item -Path $ProgIdPathHKLM -Force -ErrorAction SilentlyContinue | Out-Null
+    Set-ItemProperty -Path $ProgIdPathHKLM -Name "(Default)" -Value "Telephone Link" -Force -ErrorAction SilentlyContinue
+    
+    # Icone
+    New-Item -Path "$ProgIdPathHKLM\DefaultIcon" -Force -ErrorAction SilentlyContinue | Out-Null
+    Set-ItemProperty -Path "$ProgIdPathHKLM\DefaultIcon" -Name "(Default)" -Value "$AppPath,0" -Force -ErrorAction SilentlyContinue
     
     # Commande d'ouverture
-    New-Item -Path "$ProgIdPath\shell\open\command" -Force | Out-Null
-    Set-ItemProperty -Path "$ProgIdPath\shell\open\command" -Name "(Default)" -Value "`"$AppPath`" `"%1`"" -Force
+    New-Item -Path "$ProgIdPathHKLM\shell\open\command" -Force -ErrorAction SilentlyContinue | Out-Null
+    Set-ItemProperty -Path "$ProgIdPathHKLM\shell\open\command" -Name "(Default)" -Value "`"$AppPath`" `"%1`"" -Force -ErrorAction SilentlyContinue
+    Write-Host "  ProgId $ProgId enregistre"
     
-    Write-Host "✅ ProgId enregistré"
+    # 4. Enregistrer le protocole tel: lui-meme
+    $TelPathHKLM = "HKLM:\Software\Classes\tel"
+    New-Item -Path $TelPathHKLM -Force -ErrorAction SilentlyContinue | Out-Null
+    Set-ItemProperty -Path $TelPathHKLM -Name "(Default)" -Value "URL:tel protocol" -Force -ErrorAction SilentlyContinue
+    Set-ItemProperty -Path $TelPathHKLM -Name "URL Protocol" -Value "" -Force -ErrorAction SilentlyContinue
     
-    # ===== 3. Enregistrer le protocole tel: lui-même =====
-    $TelPath = "HKCU:\Software\Classes\tel"
-    New-Item -Path $TelPath -Force | Out-Null
-    Set-ItemProperty -Path $TelPath -Name "(Default)" -Value "URL:tel protocol" -Force
-    Set-ItemProperty -Path $TelPath -Name "URL Protocol" -Value "" -Force
+    # Commande pour le protocole
+    New-Item -Path "$TelPathHKLM\shell\open\command" -Force -ErrorAction SilentlyContinue | Out-Null
+    Set-ItemProperty -Path "$TelPathHKLM\shell\open\command" -Name "(Default)" -Value "`"$AppPath`" `"%1`"" -Force -ErrorAction SilentlyContinue
+    Write-Host "  Protocole tel: enregistre"
     
-    # Shell\open\command avec le ProgId
-    New-Item -Path "$TelPath\shell\open\command" -Force | Out-Null
-    Set-ItemProperty -Path "$TelPath\shell\open\command" -Name "(Default)" -Value "`"$AppPath`" `"%1`"" -Force
+    # ===== HKCU (Utilisateur) - Fallback =====
+    Write-Host "Enregistrement dans HKCU (utilisateur) comme fallback..."
     
-    Write-Host "✅ Protocole tel: enregistré"
+    $TelPathHKCU = "HKCU:\Software\Classes\tel"
+    New-Item -Path $TelPathHKCU -Force -ErrorAction SilentlyContinue | Out-Null
+    Set-ItemProperty -Path $TelPathHKCU -Name "(Default)" -Value "URL:tel protocol" -Force -ErrorAction SilentlyContinue
+    Set-ItemProperty -Path $TelPathHKCU -Name "URL Protocol" -Value "" -Force -ErrorAction SilentlyContinue
     
-    # ===== 4. Enregistrer les capacités pour l'UI Paramètres Windows =====
-    # Ceci permet à Windows de montrer l'application comme option dans Paramètres
-    $CapabilitiesPath = "HKCU:\Software\Classes\Applications\CelyaVox.exe\Capabilities"
-    New-Item -Path $CapabilitiesPath -Force | Out-Null
-    Set-ItemProperty -Path $CapabilitiesPath -Name "ApplicationDescription" -Value "Telephone and VoIP application" -Force
-    Set-ItemProperty -Path $CapabilitiesPath -Name "ApplicationName" -Value "CelyaVox" -Force
+    New-Item -Path "$TelPathHKCU\shell\open\command" -Force -ErrorAction SilentlyContinue | Out-Null
+    Set-ItemProperty -Path "$TelPathHKCU\shell\open\command" -Name "(Default)" -Value "`"$AppPath`" `"%1`"" -Force -ErrorAction SilentlyContinue
     
-    # Déclarer que CelyaVox gère le protocole tel:
-    $UrlAssocPath = "$CapabilitiesPath\URLAssociations"
-    New-Item -Path $UrlAssocPath -Force | Out-Null
-    Set-ItemProperty -Path $UrlAssocPath -Name "tel" -Value $ProgId -Force
+    Write-Host "  Protocole tel: enregistre (HKCU)"
     
-    Write-Host "✅ Capacités enregistrées pour Paramètres Windows"
-    
-    # ===== 5. Optionnel: Associer l'utilisateur au gestionnaire par défaut =====
-    # Cette clé dit à Windows quel ProgId utiliser par défaut pour tel:
-    $UserChoicePath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\FileExts\.tel\UserChoice"
-    # Note: UserChoice est protégée et ne peut généralement pas être écrite directement
-    # Le shell Windows Params le fera lors du clic utilisateur
-    
-    Write-Host "✅ Protocole tel: complètement enregistré pour l'utilisateur courant"
     Write-Host ""
-    Write-Host "L'application apparaîtra dans :"
-    Write-Host "  • Paramètres → Applications → Applications par défaut → Protocoles"
-    Write-Host "  • Clic droit sur lien tel: → Ouvrir avec"
-    
+    Write-Host "Enregistrement termine avec succes"
+    Write-Host "L'application apparaitra dans:"
+    Write-Host "  - Parametres -> Applications -> Applications par defaut -> Protocoles"
+    Write-Host "  - Comme option quand on clique sur un lien tel:"
 }
 catch {
-    Write-Host "⚠️ Erreur lors de l'enregistrement du protocole tel:: $_" -ForegroundColor Yellow
+    Write-Host "ERREUR lors de l'enregistrement du protocole tel:: $_" -ForegroundColor Yellow
 }
-
-# L'application crée les fichiers config au premier lancement
