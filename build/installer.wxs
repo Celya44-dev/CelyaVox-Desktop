@@ -5,7 +5,7 @@
     <CustomAction 
       Id="RunPostInstallBatch"
       Directory="INSTALLFOLDER"
-      ExeCommand="cmd.exe /c &quot;[INSTALLFOLDER]postinstall_windows.bat&quot; &quot;[INSTALLFOLDER]&quot;"
+      ExeCommand="cmd.exe /c &quot;[INSTALLFOLDER]postinstall_windows.bat&quot;"
       Execute="deferred"
       Impersonate="no"
       Return="ignore" />
