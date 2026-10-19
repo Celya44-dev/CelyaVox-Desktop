@@ -182,7 +182,7 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "perMachine": true,
-      "runAfterFinish": true,
+      "runAfterFinish": false,
       "additionalWixArgs": [
         "-ext", "WixUIExtension",
         "-ext", "WixUtilExtension"

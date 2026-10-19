@@ -1,20 +1,104 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
   <Fragment>
-    <!-- Créer un CustomAction qui exécute le batch qui lance PowerShell -->
+    <!-- CustomAction pour logger le début de l'installation -->
     <CustomAction 
-      Id="RunPostInstallScript"
-      Directory="INSTALLFOLDER"
-      ExeCommand="cmd.exe /c &quot;[INSTALLFOLDER]postinstall_windows.bat&quot;"
+      Id="LogInstallStart"
+      Execute="immediate"
+      ExeCommand="powershell.exe -NoProfile -NonInteractive -Command &quot;New-Item -Path '[LocalAppDataFolder]CelyaVox' -ItemType Directory -Force | Out-Null; Add-Content -Path '[LocalAppDataFolder]CelyaVox\install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [DEBUT] Installation de CelyaVox' -f [DateTime]::Now)&quot;"
+      Return="ignore" />
+
+    <!-- CustomAction pour logger l'enregistrement du protocole -->
+    <CustomAction 
+      Id="LogProtocolRegistration"
       Execute="deferred"
+      ExeCommand="powershell.exe -NoProfile -NonInteractive -Command &quot;Add-Content -Path '[LocalAppDataFolder]CelyaVox\install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [PROTOCOLE] Enregistrement du gestionnaire tel: en cours' -f [DateTime]::Now); Add-Content -Path '[LocalAppDataFolder]CelyaVox\install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [CHEMIN] Installation: [INSTALLFOLDER]' -f [DateTime]::Now)&quot;"
       Impersonate="no"
       Return="ignore" />
+
+    <!-- CustomAction pour logger la fin de l'installation -->
+    <CustomAction 
+      Id="LogInstallEnd"
+      Execute="deferred"
+      ExeCommand="powershell.exe -NoProfile -NonInteractive -Command &quot;Add-Content -Path '[LocalAppDataFolder]CelyaVox\install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [SUCCES] Installation terminee' -f [DateTime]::Now); Add-Content -Path '[LocalAppDataFolder]CelyaVox\install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [INFO] Fichier log: [LocalAppDataFolder]CelyaVox\install.log' -f [DateTime]::Now)&quot;"
+      Impersonate="no"
+      Return="ignore" />
+
+    <!-- Enregistrement direct du protocole tel: dans le registre -->
+    
+    <!-- Clé principale du protocole -->
+    <RegistryKey Root="HKLM" Key="Software\Classes\tel" Action="createAndRemoveOnUninstall">
+      <RegistryValue Type="string" Value="URL:tel protocol" />
+      <RegistryValue Name="URL Protocol" Type="string" Value="" />
+      
+      <!-- Commande d'ouverture -->
+      <RegistryKey Key="shell\open\command" Action="createAndRemoveOnUninstall">
+        <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]CelyaVox.exe&quot; &quot;%1&quot;" />
+      </RegistryKey>
+    </RegistryKey>
+
+    <!-- Fallback HKCU pour utilisateur sans admin -->
+    <RegistryKey Root="HKCU" Key="Software\Classes\tel" Action="createAndRemoveOnUninstall">
+      <RegistryValue Type="string" Value="URL:tel protocol" />
+      <RegistryValue Name="URL Protocol" Type="string" Value="" />
+      
+      <RegistryKey Key="shell\open\command" Action="createAndRemoveOnUninstall">
+        <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]CelyaVox.exe&quot; &quot;%1&quot;" />
+      </RegistryKey>
+    </RegistryKey>
+
+    <!-- Enregistrement du ProgId en HKLM -->
+    <RegistryKey Root="HKLM" Key="Software\Classes\CelyaVox.tel" Action="createAndRemoveOnUninstall">
+      <RegistryValue Type="string" Value="Telephone Link" />
+      
+      <RegistryKey Key="DefaultIcon" Action="createAndRemoveOnUninstall">
+        <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]CelyaVox.exe&quot;,0" />
+      </RegistryKey>
+      
+      <RegistryKey Key="shell\open\command" Action="createAndRemoveOnUninstall">
+        <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]CelyaVox.exe&quot; &quot;%1&quot;" />
+      </RegistryKey>
+    </RegistryKey>
+
+    <!-- Enregistrement du ProgId en HKCU -->
+    <RegistryKey Root="HKCU" Key="Software\Classes\CelyaVox.tel" Action="createAndRemoveOnUninstall">
+      <RegistryValue Type="string" Value="Telephone Link" />
+      
+      <RegistryKey Key="DefaultIcon" Action="createAndRemoveOnUninstall">
+        <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]CelyaVox.exe&quot;,0" />
+      </RegistryKey>
+      
+      <RegistryKey Key="shell\open\command" Action="createAndRemoveOnUninstall">
+        <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]CelyaVox.exe&quot; &quot;%1&quot;" />
+      </RegistryKey>
+    </RegistryKey>
+
+    <!-- RegisteredApplications en HKLM pour apparaître dans Settings -->
+    <RegistryKey Root="HKLM" Key="Software\RegisteredApplications" Action="create">
+      <RegistryValue Name="CelyaVox" Type="string" Value="Software\Classes\Applications\CelyaVox.exe\Capabilities" />
+    </RegistryKey>
+
+    <!-- Capabilities en HKLM -->
+    <RegistryKey Root="HKLM" Key="Software\Classes\Applications\CelyaVox.exe\Capabilities" Action="createAndRemoveOnUninstall">
+      <RegistryValue Name="ApplicationName" Type="string" Value="CelyaVox" />
+      <RegistryValue Name="ApplicationDescription" Type="string" Value="Telephone and VoIP application" />
+      
+      <RegistryKey Key="URLAssociations" Action="createAndRemoveOnUninstall">
+        <RegistryValue Name="tel" Type="string" Value="CelyaVox.tel" />
+      </RegistryKey>
+    </RegistryKey>
   </Fragment>
 
   <Fragment>
     <InstallExecuteSequence>
-      <!-- Exécuter après installation des fichiers, uniquement pour nouvelle installation -->
-      <Custom Action="RunPostInstallScript" After="InstallFiles">NOT Installed</Custom>
+      <!-- Logs au début -->
+      <Custom Action="LogInstallStart" After="AppSearch">NOT Installed</Custom>
+      
+      <!-- Logs pour le protocole -->
+      <Custom Action="LogProtocolRegistration" After="InstallFiles">NOT Installed</Custom>
+      
+      <!-- Logs à la fin -->
+      <Custom Action="LogInstallEnd" After="InstallFinalize">NOT Installed</Custom>
     </InstallExecuteSequence>
   </Fragment>
 </Wix>
