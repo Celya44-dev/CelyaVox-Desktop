@@ -5,14 +5,30 @@
     <CustomAction 
       Id="LogInstallStart"
       Execute="immediate"
-      ExeCommand="powershell.exe -NoProfile -NonInteractive -Command &quot;New-Item -Path '[LocalAppDataFolder]CelyaVox' -ItemType Directory -Force | Out-Null; Add-Content -Path '[LocalAppDataFolder]CelyaVox\install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [DEBUT] Installation de CelyaVox' -f [DateTime]::Now)&quot;"
+      ExeCommand="powershell.exe -NoProfile -NonInteractive -Command &quot;Add-Content -Path '[INSTALLFOLDER]install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [DEBUT] Installation de CelyaVox' -f [DateTime]::Now) -ErrorAction SilentlyContinue&quot;"
       Return="ignore" />
 
     <!-- CustomAction pour logger l'enregistrement du protocole -->
     <CustomAction 
       Id="LogProtocolRegistration"
       Execute="deferred"
-      ExeCommand="powershell.exe -NoProfile -NonInteractive -Command &quot;Add-Content -Path '[LocalAppDataFolder]CelyaVox\install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [PROTOCOLE] Enregistrement du gestionnaire tel: en cours' -f [DateTime]::Now); Add-Content -Path '[LocalAppDataFolder]CelyaVox\install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [CHEMIN] Installation: [INSTALLFOLDER]' -f [DateTime]::Now)&quot;"
+      ExeCommand="powershell.exe -NoProfile -NonInteractive -Command &quot;Add-Content -Path '[INSTALLFOLDER]install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [PROTOCOLE] Enregistrement du gestionnaire tel: en cours' -f [DateTime]::Now) -ErrorAction SilentlyContinue; Add-Content -Path '[INSTALLFOLDER]install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [CHEMIN] Installation: [INSTALLFOLDER]' -f [DateTime]::Now) -ErrorAction SilentlyContinue&quot;"
+      Impersonate="no"
+      Return="ignore" />
+
+    <!-- CustomAction pour vérifier les modifications du registre HKLM -->
+    <CustomAction 
+      Id="LogRegistryVerificationHKLM"
+      Execute="deferred"
+      ExeCommand="powershell.exe -NoProfile -NonInteractive -Command &quot;Add-Content -Path '[INSTALLFOLDER]install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [REGISTRE] Verification HKLM' -f [DateTime]::Now) -ErrorAction SilentlyContinue; `$telKey = Get-Item 'HKLM:\Software\Classes\tel' -ErrorAction SilentlyContinue; if (`$telKey) { Add-Content -Path '[INSTALLFOLDER]install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [OK] Cle tel: trouvee en HKLM' -f [DateTime]::Now) -ErrorAction SilentlyContinue; `$progId = Get-ItemProperty 'HKLM:\Software\Classes\CelyaVox.tel\shell\open\command' -ErrorAction SilentlyContinue; if (`$progId) { Add-Content -Path '[INSTALLFOLDER]install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [OK] ProgId CelyaVox.tel enregistre: ' + `$progId.'(Default)' -f [DateTime]::Now) -ErrorAction SilentlyContinue } else { Add-Content -Path '[INSTALLFOLDER]install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [ERREUR] ProgId CelyaVox.tel NON trouve' -f [DateTime]::Now) -ErrorAction SilentlyContinue } } else { Add-Content -Path '[INSTALLFOLDER]install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [ERREUR] Cle tel: NON trouvee en HKLM' -f [DateTime]::Now) -ErrorAction SilentlyContinue }; `$regApps = Get-ItemProperty 'HKLM:\Software\RegisteredApplications' -Name 'CelyaVox' -ErrorAction SilentlyContinue; if (`$regApps) { Add-Content -Path '[INSTALLFOLDER]install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [OK] RegisteredApplications CelyaVox enregistre' -f [DateTime]::Now) -ErrorAction SilentlyContinue } else { Add-Content -Path '[INSTALLFOLDER]install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [ERREUR] RegisteredApplications CelyaVox NON enregistre' -f [DateTime]::Now) -ErrorAction SilentlyContinue }&quot;"
+      Impersonate="no"
+      Return="ignore" />
+
+    <!-- CustomAction pour vérifier les modifications du registre HKCU -->
+    <CustomAction 
+      Id="LogRegistryVerificationHKCU"
+      Execute="deferred"
+      ExeCommand="powershell.exe -NoProfile -NonInteractive -Command &quot;Add-Content -Path '[INSTALLFOLDER]install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [REGISTRE] Verification HKCU' -f [DateTime]::Now) -ErrorAction SilentlyContinue; `$telKeyUser = Get-Item 'HKCU:\Software\Classes\tel' -ErrorAction SilentlyContinue; if (`$telKeyUser) { Add-Content -Path '[INSTALLFOLDER]install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [OK] Cle tel: trouvee en HKCU' -f [DateTime]::Now) -ErrorAction SilentlyContinue; `$cmdUser = Get-ItemProperty 'HKCU:\Software\Classes\tel\shell\open\command' -ErrorAction SilentlyContinue; if (`$cmdUser) { Add-Content -Path '[INSTALLFOLDER]install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [OK] Commande enregistree: ' + `$cmdUser.'(Default)' -f [DateTime]::Now) -ErrorAction SilentlyContinue } } else { Add-Content -Path '[INSTALLFOLDER]install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [ERREUR] Cle tel: NON trouvee en HKCU' -f [DateTime]::Now) -ErrorAction SilentlyContinue }&quot;"
       Impersonate="no"
       Return="ignore" />
 
@@ -20,7 +36,7 @@
     <CustomAction 
       Id="LogInstallEnd"
       Execute="deferred"
-      ExeCommand="powershell.exe -NoProfile -NonInteractive -Command &quot;Add-Content -Path '[LocalAppDataFolder]CelyaVox\install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [SUCCES] Installation terminee' -f [DateTime]::Now); Add-Content -Path '[LocalAppDataFolder]CelyaVox\install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [INFO] Fichier log: [LocalAppDataFolder]CelyaVox\install.log' -f [DateTime]::Now)&quot;"
+      ExeCommand="powershell.exe -NoProfile -NonInteractive -Command &quot;Add-Content -Path '[INSTALLFOLDER]install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [SUCCES] Installation terminee' -f [DateTime]::Now) -ErrorAction SilentlyContinue; Add-Content -Path '[INSTALLFOLDER]install.log' -Value ('{0:yyyy-MM-dd HH:mm:ss} - [INFO] Fichier log: [INSTALLFOLDER]install.log' -f [DateTime]::Now) -ErrorAction SilentlyContinue&quot;"
       Impersonate="no"
       Return="ignore" />
 
@@ -96,6 +112,12 @@
       
       <!-- Logs pour le protocole -->
       <Custom Action="LogProtocolRegistration" After="InstallFiles">NOT Installed</Custom>
+      
+      <!-- Vérification HKLM -->
+      <Custom Action="LogRegistryVerificationHKLM" After="LogProtocolRegistration">NOT Installed</Custom>
+      
+      <!-- Vérification HKCU -->
+      <Custom Action="LogRegistryVerificationHKCU" After="LogRegistryVerificationHKLM">NOT Installed</Custom>
       
       <!-- Logs à la fin -->
       <Custom Action="LogInstallEnd" After="InstallFinalize">NOT Installed</Custom>
