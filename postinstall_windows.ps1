@@ -4,6 +4,24 @@ param(
     [string]$InstallDir = ""
 )
 
+# Vérifier si le script s'exécute avec les droits admin
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
+if (-not $isAdmin) {
+    Write-Host "[AVERTISSEMENT] Ce script necessite les droits administrateur." -ForegroundColor Yellow
+    Write-Host "[ACTION] Relancement du script en tant qu'administrateur..." -ForegroundColor Yellow
+    
+    # Recréer la commande avec les mêmes paramètres
+    $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+    if ($InstallDir) {
+        $arguments += " -InstallDir `"$InstallDir`""
+    }
+    
+    # Relancer le script avec élévation
+    Start-Process -FilePath powershell.exe -ArgumentList $arguments -Verb RunAs -Wait
+    exit
+}
+
 Write-Host "[postinstall] Installation de CelyaVox reussie" -ForegroundColor Green
 
 try {
@@ -14,15 +32,7 @@ try {
     Write-Host "App Path: $AppPath"
     Write-Host "ProgId: $ProgId"
     
-    # Verifier si on a les droits admin
-    $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    
-    if (-not $isAdmin) {
-        Write-Host "ATTENTION: Ce script necessite les droits administrateur pour HKLM"
-        Write-Host "Continuant avec HKCU seulement..."
-    }
-    
-    # ===== HKLM (Systeme) - Priorite pour Windows =====
+    # Enregistrement HKLM (Systeme) - Priorite pour Windows
     Write-Host "Enregistrement dans HKLM (systeme)..."
     
     # 1. Enregistrer dans RegisteredApplications

@@ -1,14 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:util="http://schemas.microsoft.com/wix/UtilExtension">
   <Fragment>
+    <!-- Condition d'élévation pour Windows 11 PRO - Force l'UAC -->
+    <CustomAction
+      Id="CheckAdminPrivileges"
+      Error="CelyaVox requires administrator privileges to install properly on this system."
+      Impersonate="no" />
+
     <!-- CustomAction pour exécuter le batch de postinstall -->
     <CustomAction 
       Id="RunPostInstallBatch"
       Directory="INSTALLFOLDER"
-      ExeCommand="cmd.exe /c &quot;[INSTALLFOLDER]postinstall_windows.bat&quot;"
+      ExeCommand="cmd.exe /c &quot;[INSTALLFOLDER]postinstall_windows.bat&quot; &quot;[INSTALLFOLDER]&quot;"
       Execute="deferred"
       Impersonate="no"
-      Return="ignore" />
+      Return="check" />
 
     <!-- Enregistrement direct du protocole tel: dans le registre -->
     
@@ -77,6 +83,9 @@
 
   <Fragment>
     <InstallExecuteSequence>
+      <!-- Vérifier les privilèges admin avant installation sur Windows 11 PRO -->
+      <Custom Action="CheckAdminPrivileges" Before="InstallInitialize">NOT ALLUSERS</Custom>
+      
       <!-- Appeler le batch postinstall après installation des fichiers -->
       <Custom Action="RunPostInstallBatch" After="InstallFiles">NOT Installed</Custom>
     </InstallExecuteSequence>

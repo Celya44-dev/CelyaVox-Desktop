@@ -1,7 +1,22 @@
 @echo off
 REM postinstall_windows.bat - Enregistrement du gestionnaire de lien tel: avec logs
+REM Vérification et élévation des privilèges administrateur
 
 setlocal enabledelayedexpansion
+
+REM Vérifier si l'administrateur est actif
+>nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
+
+if !errorlevel! neq 0 (
+  echo.
+  echo [AVERTISSEMENT] Ce script necessite les droits administrateur.
+  echo [ACTION] Relancement du script en tant qu'administrateur...
+  echo.
+  
+  REM Relancer le script avec droits admin
+  powershell -Command "Start-Process -FilePath 'cmd.exe' -ArgumentList '/c \"%~f0\" \"%~1\"' -Verb RunAs -WindowStyle Hidden" 
+  exit /b !errorlevel!
+)
 
 REM Le chemin d'installation devrait être passé en paramètre, sinon on utilise le répertoire courant
 if not "%1"=="" (

@@ -1,6 +1,6 @@
 {
   "name": "CelyaVox",
-  "version": "1.1.3",
+  "version": "1.1.4",
   "description": "Electron wrapper for CelyaVox",
   "repository": {
     "type": "git",
@@ -175,12 +175,17 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "${productName}",
-      "include": "build/installer-hooks.nsh"
+      "includeUninstaller": true,
+      "include": "build/installer-hooks.nsh",
+      "installerIconPath": "assets/icon.ico",
+      "uninstallerIconPath": "assets/icon.ico"
     },
     "msi": {
       "artifactName": "${productName}-${version}.${ext}",
+      "oneClick": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
+      "shortcutName": "${productName}",
       "perMachine": true,
       "runAfterFinish": false,
       "additionalWixArgs": [

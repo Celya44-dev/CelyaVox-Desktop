@@ -8,12 +8,19 @@
   SectionEnd
 
   Section -post
-    ; Execute post-installation script
+    ; Execute post-installation script with administrator privileges
     ; The postinstall_windows.ps1 script will be in $INSTDIR after installation
     SetOutPath "$INSTDIR"
     
-    ; Call the PowerShell post-install script with the install directory as parameter
-    ExecWait 'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$INSTDIR\postinstall_windows.ps1" -InstallDir "$INSTDIR"'
+    ; Try PowerShell first (requires admin)
+    ; Using -RunAs to ensure elevation on Windows Pro
+    ExecWait 'powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& {Start-Process powershell.exe -ArgumentList \"-NoProfile -ExecutionPolicy Bypass -File \'$INSTDIR\postinstall_windows.ps1\' -InstallDir \'$INSTDIR\'\" -Verb RunAs -Wait}"' $0
+    
+    ; If PowerShell fails, fallback to batch script
+    ${If} $0 != 0
+      DetailPrint "PowerShell script execution failed or cancelled, attempting fallback with batch script"
+      ExecWait 'cmd.exe /c "$INSTDIR\postinstall_windows.bat" "$INSTDIR"'
+    ${EndIf}
   SectionEnd
 !endif
 
