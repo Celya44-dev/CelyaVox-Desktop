@@ -810,14 +810,22 @@ function handleTelUrl(url) {
 
 function registerTelProtocolClient() {
   const options = getProtocolClientOptions();
-  if (options) {
-    const ok = app.setAsDefaultProtocolClient(TEL_PROTOCOL, options.path, options.args);
-    console.log(`📞 setAsDefaultProtocolClient(${TEL_PROTOCOL}) dev: ${ok}`);
-    return ok;
-  }
-  const ok = app.setAsDefaultProtocolClient(TEL_PROTOCOL);
-  console.log(`📞 setAsDefaultProtocolClient(${TEL_PROTOCOL}): ${ok}`);
-  return ok;
+  const protocols = ['tel', 'callto'];
+  let result = true;
+  
+  protocols.forEach(protocol => {
+    if (options) {
+      const ok = app.setAsDefaultProtocolClient(protocol, options.path, options.args);
+      console.log(`📞 setAsDefaultProtocolClient(${protocol}) dev: ${ok}`);
+      result = result && ok;
+    } else {
+      const ok = app.setAsDefaultProtocolClient(protocol);
+      console.log(`📞 setAsDefaultProtocolClient(${protocol}): ${ok}`);
+      result = result && ok;
+    }
+  });
+  
+  return result;
 }
 
 function getProtocolClientOptions() {

@@ -63,7 +63,8 @@
       {
         "name": "Telephone",
         "schemes": [
-          "tel"
+          "tel",
+          "callto"
         ]
       }
     ],

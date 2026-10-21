@@ -39,6 +39,26 @@
       </RegistryKey>
     </RegistryKey>
 
+    <!-- Enregistrement callto: en HKLM -->
+    <RegistryKey Root="HKLM" Key="Software\Classes\callto" Action="createAndRemoveOnUninstall">
+      <RegistryValue Type="string" Value="URL:callto protocol" />
+      <RegistryValue Name="URL Protocol" Type="string" Value="" />
+      
+      <RegistryKey Key="shell\open\command" Action="createAndRemoveOnUninstall">
+        <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]CelyaVox.exe&quot; &quot;%1&quot;" />
+      </RegistryKey>
+    </RegistryKey>
+
+    <!-- Fallback callto: HKCU pour utilisateur sans admin -->
+    <RegistryKey Root="HKCU" Key="Software\Classes\callto" Action="createAndRemoveOnUninstall">
+      <RegistryValue Type="string" Value="URL:callto protocol" />
+      <RegistryValue Name="URL Protocol" Type="string" Value="" />
+      
+      <RegistryKey Key="shell\open\command" Action="createAndRemoveOnUninstall">
+        <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]CelyaVox.exe&quot; &quot;%1&quot;" />
+      </RegistryKey>
+    </RegistryKey>
+
     <!-- Enregistrement du ProgId en HKLM -->
     <RegistryKey Root="HKLM" Key="Software\Classes\CelyaVox.tel" Action="createAndRemoveOnUninstall">
       <RegistryValue Type="string" Value="Telephone Link" />
@@ -65,6 +85,32 @@
       </RegistryKey>
     </RegistryKey>
 
+    <!-- Enregistrement du ProgId callto en HKLM -->
+    <RegistryKey Root="HKLM" Key="Software\Classes\CelyaVox.callto" Action="createAndRemoveOnUninstall">
+      <RegistryValue Type="string" Value="Telephone Link" />
+      
+      <RegistryKey Key="DefaultIcon" Action="createAndRemoveOnUninstall">
+        <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]CelyaVox.exe&quot;,0" />
+      </RegistryKey>
+      
+      <RegistryKey Key="shell\open\command" Action="createAndRemoveOnUninstall">
+        <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]CelyaVox.exe&quot; &quot;%1&quot;" />
+      </RegistryKey>
+    </RegistryKey>
+
+    <!-- Enregistrement du ProgId callto en HKCU -->
+    <RegistryKey Root="HKCU" Key="Software\Classes\CelyaVox.callto" Action="createAndRemoveOnUninstall">
+      <RegistryValue Type="string" Value="Telephone Link" />
+      
+      <RegistryKey Key="DefaultIcon" Action="createAndRemoveOnUninstall">
+        <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]CelyaVox.exe&quot;,0" />
+      </RegistryKey>
+      
+      <RegistryKey Key="shell\open\command" Action="createAndRemoveOnUninstall">
+        <RegistryValue Type="string" Value="&quot;[INSTALLFOLDER]CelyaVox.exe&quot; &quot;%1&quot;" />
+      </RegistryKey>
+    </RegistryKey>
+
     <!-- RegisteredApplications en HKLM pour apparaître dans Settings -->
     <RegistryKey Root="HKLM" Key="Software\RegisteredApplications" Action="create">
       <RegistryValue Name="CelyaVox" Type="string" Value="Software\Classes\Applications\CelyaVox.exe\Capabilities" />
@@ -77,6 +123,7 @@
       
       <RegistryKey Key="URLAssociations" Action="createAndRemoveOnUninstall">
         <RegistryValue Name="tel" Type="string" Value="CelyaVox.tel" />
+        <RegistryValue Name="callto" Type="string" Value="CelyaVox.callto" />
       </RegistryKey>
     </RegistryKey>
   </Fragment>
