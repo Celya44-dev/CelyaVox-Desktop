@@ -188,7 +188,6 @@
       "perMachine": true,
       "runAfterFinish": false,
       "additionalWixArgs": [
-        "-ext", "WixUIExtension",
         "-ext", "WixUtilExtension"
       ]
     },
