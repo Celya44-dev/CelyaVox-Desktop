@@ -4,20 +4,6 @@ REM Vérification et élévation des privilèges administrateur
 
 setlocal enabledelayedexpansion
 
-REM Vérifier si l'administrateur est actif
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-
-if !errorlevel! neq 0 (
-  echo.
-  echo [AVERTISSEMENT] Ce script necessite les droits administrateur.
-  echo [ACTION] Relancement du script en tant qu'administrateur...
-  echo.
-  
-  REM Relancer le script avec droits admin
-  powershell -Command "Start-Process -FilePath 'cmd.exe' -ArgumentList '/c \"%~f0\" \"%~1\"' -Verb RunAs -WindowStyle Hidden" 
-  exit /b !errorlevel!
-)
-
 REM Le chemin d'installation devrait être passé en paramètre, sinon on utilise le répertoire courant
 if not "%1"=="" (
   set "INSTALL_DIR=%1"
@@ -25,13 +11,23 @@ if not "%1"=="" (
   set "INSTALL_DIR=%~dp0"
 )
 
-set "LOG_FILE=!INSTALL_DIR!install.log"
 set "APP_PATH=!INSTALL_DIR!CelyaVox.exe"
 set "PROG_ID=CelyaVox.tel"
 
-REM Créer le fichier log local
+REM Créer le fichier log dans %TEMP% pour éviter les problèmes d'accès
+set "LOG_FILE=%TEMP%\CelyaVox_postinstall.log"
+
+REM Créer le fichier log local AVANT le test d'admin
 echo [%DATE% %TIME%] [DEBUT] Installation de CelyaVox >> "!LOG_FILE!"
 echo [%DATE% %TIME%] [CHEMIN] Installation: !INSTALL_DIR! >> "!LOG_FILE!"
+
+REM Vérifier si l'administrateur est actif
+REM Test fiable: essayer de lire une clé HKLM
+reg query "HKEY_LOCAL_MACHINE\Software" >nul 2>&1
+if !errorlevel! neq 0 (
+  echo [%DATE% %TIME%] [AVERTISSEMENT] Pas d'acces HKLM. Seul HKCU sera configure. >> "!LOG_FILE!"
+)
+
 echo [%DATE% %TIME%] [PROTOCOLE] Enregistrement du gestionnaire tel: en cours >> "!LOG_FILE!"
 echo [%DATE% %TIME%] [PROTOCOLE] Enregistrement du gestionnaire callto: en cours >> "!LOG_FILE!"
 
@@ -154,6 +150,6 @@ echo [%DATE% %TIME%] [SUCCES] Enregistrement complet >> "!LOG_FILE!"
 echo [%DATE% %TIME%] [INFO] Fichier log: !LOG_FILE! >> "!LOG_FILE!"
 
 REM Écrire l'événement final dans Windows Event Log
-eventcreate /T INFORMATION /ID 1003 /L APPLICATION /SO "CelyaVox Installer" /D "CelyaVox postinstall completed - Log file: !LOG_FILE!" 2>nul
+eventcreate /T INFORMATION /ID 1003 /L APPLICATION /SO "CelyaVox Installer" /D "CelyaVox postinstall completed - Log file: %TEMP%\CelyaVox_postinstall.log" 2>nul
 
 endlocal

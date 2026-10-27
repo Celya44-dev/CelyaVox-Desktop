@@ -1258,7 +1258,9 @@ function showIncomingCallNotification(callerInfo = 'Appel entrant') {
   }
   
   // Créer une petite fenêtre de notification
-  notificationWindow = new BrowserWindow({
+  // ⭐ Solution avec closures: capturer la fenêtre dans une variable locale
+  // Cela évite les race conditions quand plusieurs appels arrivent simultanément
+  const window = new BrowserWindow({
     width: 350,
     height: 200,
     show: false,
@@ -1276,11 +1278,14 @@ function showIncomingCallNotification(callerInfo = 'Appel entrant') {
     }
   });
   
+  // Mettre à jour la référence globale
+  notificationWindow = window;
+  
   // Positionner la fenêtre en haut à droite de l'écran
   const { screen } = require('electron');
   const primaryDisplay = screen.getPrimaryDisplay();
-  const { width, height } = primaryDisplay.workAreaSize;
-  notificationWindow.setPosition(width - 370, 20);
+  const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+  window.setPosition(screenWidth - 370, 20);
   
   // Charger le HTML de notification avec les infos en paramètre
   const notificationHtmlPath = path.join(__dirname, 'notification-call.html');
@@ -1288,35 +1293,44 @@ function showIncomingCallNotification(callerInfo = 'Appel entrant') {
   const fileUrl = `file://${notificationHtmlPath}?caller=${encodedCallerInfo}`;
   console.log('📄 Chargement de la notification depuis:', fileUrl);
   
-  notificationWindow.loadURL(fileUrl).catch(err => {
+  window.loadURL(fileUrl).catch(err => {
     console.error('❌ Erreur lors du chargement de notification-call.html:', err);
   });
 
-  notificationWindow.once('ready-to-show', () => {
+  // ⭐ Les closures capturent la variable locale 'window', pas la globale
+  // Même si notificationWindow change, ces handlers utilisent toujours la bonne fenêtre
+  window.once('ready-to-show', () => {
     try {
-      // Afficher sans voler le focus
-      notificationWindow.showInactive();
+      // La variable 'window' reste la même, même si notificationWindow est réassignée
+      if (!window.isDestroyed()) {
+        window.showInactive();
+      }
     } catch (e) {
       // Fallback si showInactive n'est pas disponible
-      notificationWindow.show();
+      if (!window.isDestroyed()) {
+        window.show();
+      }
     }
   });
   
   // Gérer les erreurs de chargement
-  notificationWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+  window.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     console.error('❌ Échec du chargement de la notification:', errorCode, errorDescription);
   });
   
   // Auto-fermeture après 30 secondes
   const autoCloseTimeout = setTimeout(() => {
-    if (notificationWindow && !notificationWindow.isDestroyed()) {
-      notificationWindow.close();
+    if (!window.isDestroyed()) {
+      window.close();
     }
   }, 30000);
   
-  notificationWindow.on('closed', () => {
+  window.on('closed', () => {
     clearTimeout(autoCloseTimeout);
-    notificationWindow = null;
+    // Nettoyer la référence globale uniquement si c'est la même fenêtre
+    if (notificationWindow === window) {
+      notificationWindow = null;
+    }
   });
   
   console.log('🔔 Fenêtre de notification créée pour:', callerInfo);
