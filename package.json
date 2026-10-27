@@ -252,7 +252,18 @@
       "artifactName": "${productName}-${version}.${ext}"
     },
     "rpm": {
-      "packageName": "celyavox"
+      "packageName": "celyavox",
+      "afterInstall": "postinstall_debian.sh",
+      "depends": [
+        "gtk3",
+        "libnotify",
+        "nss",
+        "libXScrnSaver",
+        "libXtst",
+        "xdg-utils",
+        "at-spi2-core",
+        "libuuid"
+      ]
     }
   }
 }
