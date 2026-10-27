@@ -334,7 +334,6 @@ jobs:
           path: |
             dist/*.AppImage
             dist/*.deb
-            dist/*.rpm
       - name: Upload Windows artifacts
         if: matrix.platform == 'windows'
         uses: actions/upload-artifact@v4
@@ -359,7 +358,6 @@ jobs:
           path: |
             dist/*dev*.AppImage
             dist/*dev*.deb
-            dist/*dev*.rpm
       - name: Upload Windows dev artifacts
         if: matrix.platform == 'windows'
         uses: actions/upload-artifact@v4
