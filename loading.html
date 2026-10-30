@@ -358,6 +358,25 @@
         async function checkAndInitSSO() {
             try {
                 // ============================================================
+                // 🆕 CHECK PROVISIONING: Si localStorage est remplie, skip SAML
+                // ============================================================
+                const isLocalStorageProvisioned = () => {
+                    const sipUsername = localStorage.getItem('SipUsername');
+                    const sipDomain = localStorage.getItem('SipDomain');
+                    return !!(sipUsername && sipDomain);
+                };
+
+                if (isLocalStorageProvisioned()) {
+                    console.log('✅ [PROVISIONING] localStorage remplie - SAML skippé');
+                    console.log('   SipUsername:', localStorage.getItem('SipUsername'));
+                    console.log('   SipDomain:', localStorage.getItem('SipDomain'));
+                    loadRemoteApp();
+                    return;
+                }
+                
+                console.log('ℹ️ [PROVISIONING] localStorage vide - SAML sera vérifié');
+                
+                // ============================================================
                 // NOUVEAU: Vérifier d'abord s'il existe des données SAML persistées
                 // ============================================================
                 if (window.electron && window.electron.getAuthSession) {
