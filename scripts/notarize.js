@@ -51,7 +51,12 @@ function isTransientNotaryError(error) {
   return (
     message.includes('statusCode: 500') ||
     message.includes('UNEXPECTED_ERROR') ||
-    message.includes('Please try again at a later time')
+    message.includes('Please try again at a later time') ||
+    message.includes('NSURLErrorDomain Code=-1005') ||
+    message.includes('The network connection was lost') ||
+    message.includes('Error 68') ||
+    message.includes('CloudKit') ||
+    message.includes('timeout')
   );
 }
 
@@ -199,10 +204,10 @@ exports.default = async function notarizing(context) {
     notarizeOptions = { appPath, appleId, appleIdPassword, teamId: appleTeamId };
   }
 
-  const maxAttempts         = parsePositiveInt(process.env.NOTARIZE_MAX_ATTEMPTS, 1);
-  const baseDelayMs         = parsePositiveInt(process.env.NOTARIZE_RETRY_BASE_MS, 15000);
-  const maxDelayMs          = parsePositiveInt(process.env.NOTARIZE_RETRY_MAX_MS, 180000);
-  const allowTransientFailure = parseBoolean(process.env.NOTARIZE_ALLOW_TRANSIENT_FAILURE, false);
+  const maxAttempts         = parsePositiveInt(process.env.NOTARIZE_MAX_ATTEMPTS, 3);
+  const baseDelayMs         = parsePositiveInt(process.env.NOTARIZE_RETRY_BASE_MS, 30000);
+  const maxDelayMs          = parsePositiveInt(process.env.NOTARIZE_RETRY_MAX_MS, 300000);
+  const allowTransientFailure = parseBoolean(process.env.NOTARIZE_ALLOW_TRANSIENT_FAILURE, true);
 
   try {
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
