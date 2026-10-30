@@ -297,6 +297,43 @@
             }
         }
 
+        // 🆕 Charger l'app directement SANS SAML (localStorage déjà remplie)
+        function loadRemoteAppDirect() {
+            if (!serverUrl) {
+                console.error('❌ Pas de serverUrl disponible');
+                showError();
+                return;
+            }
+
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+            fetch(serverUrl, {
+                signal: controller.signal,
+                method: 'GET',
+                mode: 'no-cors'
+            })
+                .then(response => {
+                    clearTimeout(timeoutId);
+                    console.log('✅ Serveur accessible, chargement DIRECT sans SAML');
+                    console.log('   localStorage déjà provisionnée, pas de config via hash');
+                    
+                    // Charger directement SANS passer la config par le hash
+                    // L'app utilisera son propre localStorage
+                    console.log('🌐 Redirection directe vers:', serverUrl);
+                    window.location.href = serverUrl;
+                })
+                .catch(err => {
+                    clearTimeout(timeoutId);
+                    if (err.name === 'AbortError') {
+                        console.error('⏱️ Timeout après', timeout / 1000, 'secondes');
+                    } else {
+                        console.error('❌ Erreur de connexion:', err.message);
+                    }
+                    showError();
+                });
+        }
+
         function loadRemoteApp() {
             if (!serverUrl) {
                 console.error('❌ Pas de serverUrl disponible. Config reçue?', configReceived);
@@ -367,10 +404,11 @@
                 };
 
                 if (isLocalStorageProvisioned()) {
-                    console.log('✅ [PROVISIONING] localStorage remplie - SAML skippé');
+                    console.log('✅ [PROVISIONING] localStorage remplie - SAML COMPLÈTEMENT SKIPPÉ');
                     console.log('   SipUsername:', localStorage.getItem('SipUsername'));
                     console.log('   SipDomain:', localStorage.getItem('SipDomain'));
-                    loadRemoteApp();
+                    console.log('   → Chargement DIRECT sans flux SAML');
+                    loadRemoteAppDirect();
                     return;
                 }
                 
