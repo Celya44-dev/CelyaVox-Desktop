@@ -296,46 +296,8 @@ module.exports = {
   flushLogQueue,
   // Exporter une fonction pour recharger la config (sera appelée depuis main.js après app.whenReady())
   reloadConfig: function(appPath, resourcesPath) {
-    // Mettre à jour les chemins de recherche avec les données d'Electron disponibles
-    const updatedPaths = [];
-    
-    // Priorité 1: Répertoire d'installation (bundle app)
-    if (resourcesPath) {
-      updatedPaths.push(path.join(resourcesPath, 'resources', 'config.ini'));
-      updatedPaths.push(path.join(resourcesPath, 'config.ini'));
-    }
-    if (appPath) {
-      updatedPaths.push(path.join(appPath, 'resources', 'config.ini'));
-      updatedPaths.push(path.join(appPath, 'config.ini'));
-    }
-    
-    // Priorité 2: Répertoire utilisateur (userData)
-    if (process.env.CELYAVOX_USER_CONFIG_PATH) {
-      updatedPaths.push(process.env.CELYAVOX_USER_CONFIG_PATH);
-    }
-    
-    const homeDir = process.env.HOME || process.env.USERPROFILE;
-    if (homeDir) {
-      if (environment === 'dev') {
-        if (process.platform === 'linux') {
-          updatedPaths.push(path.join(homeDir, '.config', 'CelyaVox-dev', 'config.ini'));
-        } else if (process.platform === 'darwin') {
-          updatedPaths.push(path.join(homeDir, 'Library', 'Application Support', 'CelyaVox-dev', 'config.ini'));
-        } else if (process.platform === 'win32') {
-          const appData = process.env.APPDATA || homeDir;
-          updatedPaths.push(path.join(appData, 'CelyaVox-dev', 'config.ini'));
-        }
-      } else {
-        if (process.platform === 'linux') {
-          updatedPaths.push(path.join(homeDir, '.config', 'CelyaVox', 'config.ini'));
-        } else if (process.platform === 'darwin') {
-          updatedPaths.push(path.join(homeDir, 'Library', 'Application Support', 'CelyaVox', 'config.ini'));
-        } else if (process.platform === 'win32') {
-          const appData = process.env.APPDATA || homeDir;
-          updatedPaths.push(path.join(appData, 'CelyaVox', 'config.ini'));
-        }
-      }
-    }
+    // Utiliser getConfigPath() pour avoir la même priorité de chemins qu'au démarrage
+    const updatedPaths = getConfigPath();
     
     // Charger le fichier config.ini depuis les chemins mis à jour
     logMessage(`\n🔄 RECHARGEMENT CONFIG.INI APRÈS ELECTRON READY`);
