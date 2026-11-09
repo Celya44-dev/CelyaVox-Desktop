@@ -1063,10 +1063,11 @@ ${JSON.stringify(configToSend, null, 2)}
       timeout: 30000,
       window: config.window,
       ui: config.ui,
-      audio: config.audio
+      audio: config.audio,
+      configDirectory: config.configDirectory
     };
     mainWindow.webContents.send('set-config', configToSend);
-    console.log(`
+    logger.log(`
 ✅ CONFIG ENVOYÉE (dom-ready) VIA IPC:
 ${JSON.stringify(configToSend, null, 2)}
 `);

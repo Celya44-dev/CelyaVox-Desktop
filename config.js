@@ -178,99 +178,101 @@ const config = {
 // Exporter la config selon l'environnement
 const currentConfig = config[environment] || config.dev;
 
-console.log(`
+logMessage(`
 📋 FUSION CONFIG:
 INI trouvé:
 ${JSON.stringify(iniConfig, null, 2)}
 
 Config par défaut (${environment}):
-${JSON.stringify(currentConfig, null, 2)}
-`);
+${JSON.stringify(currentConfig, null, 2)}`);
 
 // Deep merge avec la config INI (surcharge les valeurs par défaut)
 const mergedConfig = JSON.parse(JSON.stringify(currentConfig)); // Clone profond
 
 if (iniConfig.window) {
   mergedConfig.window = mergedConfig.window || {};
-  console.log(`  📐 Paramètres window trouvés dans INI:`, iniConfig.window);
+  logMessage(`  📐 Paramètres window trouvés dans INI: ${JSON.stringify(iniConfig.window)}`);
   // Convertir en nombres si c'est des strings
   if (iniConfig.window.width) {
     mergedConfig.window.width = parseInt(iniConfig.window.width, 10) || currentConfig.window.width;
-    console.log(`    ✅ width: ${mergedConfig.window.width}`);
+    logMessage(`    ✅ width: ${mergedConfig.window.width}`);
   }
   if (iniConfig.window.height) {
     mergedConfig.window.height = parseInt(iniConfig.window.height, 10) || currentConfig.window.height;
-    console.log(`    ✅ height: ${mergedConfig.window.height}`);
+    logMessage(`    ✅ height: ${mergedConfig.window.height}`);
   }
 }
 
 if (iniConfig.ui) {
   mergedConfig.ui = mergedConfig.ui || {};
-  console.log(`  🎛️  Paramètres UI trouvés dans INI:`, iniConfig.ui);
+  logMessage(`  🎛️  Paramètres UI trouvés dans INI: ${JSON.stringify(iniConfig.ui)}`);
   // Convertir les booléens (0/1 ou true/false)
   if (iniConfig.ui.disableBuddies !== undefined) {
     mergedConfig.ui.disableBuddies = iniConfig.ui.disableBuddies === '1' || iniConfig.ui.disableBuddies === true;
-    console.log(`    ✅ disableBuddies: ${mergedConfig.ui.disableBuddies}`);
+    logMessage(`    ✅ disableBuddies: ${mergedConfig.ui.disableBuddies}`);
   }
   if (iniConfig.ui.disableDoNotDisturb !== undefined) {
     mergedConfig.ui.disableDoNotDisturb = iniConfig.ui.disableDoNotDisturb === '1' || iniConfig.ui.disableDoNotDisturb === true;
-    console.log(`    ✅ disableDoNotDisturb: ${mergedConfig.ui.disableDoNotDisturb}`);
+    logMessage(`    ✅ disableDoNotDisturb: ${mergedConfig.ui.disableDoNotDisturb}`);
   }
   if (iniConfig.ui.disableCallForward !== undefined) {
     mergedConfig.ui.disableCallForward = iniConfig.ui.disableCallForward === '1' || iniConfig.ui.disableCallForward === true;
-    console.log(`    ✅ disableCallForward: ${mergedConfig.ui.disableCallForward}`);
+    logMessage(`    ✅ disableCallForward: ${mergedConfig.ui.disableCallForward}`);
   }
   if (iniConfig.ui.disableGUISipAccount !== undefined) {
     mergedConfig.ui.disableGUISipAccount = iniConfig.ui.disableGUISipAccount === '1' || iniConfig.ui.disableGUISipAccount === true;
-    console.log(`    ✅ disableGUISipAccount: ${mergedConfig.ui.disableGUISipAccount}`);
+    logMessage(`    ✅ disableGUISipAccount: ${mergedConfig.ui.disableGUISipAccount}`);
   }
   if (iniConfig.ui.Notifications !== undefined) {
+    logMessage(`    🔍 DEBUG Notifications brut: "${iniConfig.ui.Notifications}" (type: ${typeof iniConfig.ui.Notifications})`);
     mergedConfig.ui.Notifications = iniConfig.ui.Notifications === '1' || iniConfig.ui.Notifications === true;
-    console.log(`    ✅ Notifications: ${mergedConfig.ui.Notifications}`);
+    logMessage(`    ✅ Notifications: ${mergedConfig.ui.Notifications}`);
   }
   if (iniConfig.ui.profilePicture !== undefined) {
     mergedConfig.ui.profilePicture = iniConfig.ui.profilePicture;
-    console.log(`    ✅ profilePicture: ${mergedConfig.ui.profilePicture}`);
+    logMessage(`    ✅ profilePicture: ${mergedConfig.ui.profilePicture}`);
   }
   if (iniConfig.ui.CustomRingtone !== undefined) {
     mergedConfig.ui.CustomRingtone = iniConfig.ui.CustomRingtone;
-    console.log(`    ✅ CustomRingtone: ${mergedConfig.ui.CustomRingtone}`);
+    logMessage(`    ✅ CustomRingtone: ${mergedConfig.ui.CustomRingtone}`);
   }
+} else {
+  logMessage(`  ⚠️  Aucun paramètre UI trouvé dans INI (iniConfig.ui est undefined)`);
 }
 
 if (iniConfig.audio) {
   mergedConfig.audio = mergedConfig.audio || {};
-  console.log(`  🔊 Paramètres Audio trouvés dans INI:`, iniConfig.audio);
+  logMessage(`  🔊 Paramètres Audio trouvés dans INI: ${JSON.stringify(iniConfig.audio)}`);
   if (iniConfig.audio.ringerOutputLabel !== undefined) {
     mergedConfig.audio.ringerOutputLabel = iniConfig.audio.ringerOutputLabel || null;
-    console.log(`    ✅ ringerOutputLabel: ${mergedConfig.audio.ringerOutputLabel}`);
+    logMessage(`    ✅ ringerOutputLabel: ${mergedConfig.audio.ringerOutputLabel}`);
   }
   if (iniConfig.audio.ringerGain !== undefined) {
     const gain = parseFloat(iniConfig.audio.ringerGain);
     if (isFinite(gain)) {
       mergedConfig.audio.ringerGain = Math.min(Math.max(gain, 0), 1);
-      console.log(`    ✅ ringerGain: ${mergedConfig.audio.ringerGain}`);
+      logMessage(`    ✅ ringerGain: ${mergedConfig.audio.ringerGain}`);
     }
   }
 }
 
 if (iniConfig.server) {
-  console.log(`  🌐 Paramètres Serveur trouvés dans INI:`, iniConfig.server);
+  logMessage(`  🌐 Paramètres Serveur trouvés dans INI: ${JSON.stringify(iniConfig.server)}`);
   if (iniConfig.server.serverUrl) {
     mergedConfig.serverUrl = iniConfig.server.serverUrl;
-    console.log(`    ✅ serverUrl: ${mergedConfig.serverUrl}`);
+    logMessage(`    ✅ serverUrl: ${mergedConfig.serverUrl}`);
   }
 }
 
 if (iniConfig.app) {
-  console.log(`  📦 Paramètres App trouvés dans INI:`, iniConfig.app);
+  logMessage(`  📦 Paramètres App trouvés dans INI: ${JSON.stringify(iniConfig.app)}`);
   if (iniConfig.app.appName) {
     mergedConfig.appName = iniConfig.app.appName;
-    console.log(`    ✅ appName: ${mergedConfig.appName}`);
+    logMessage(`    ✅ appName: ${mergedConfig.appName}`);
   }
   if (iniConfig.app.appId) {
     mergedConfig.appId = iniConfig.app.appId;
-    console.log(`    ✅ appId: ${mergedConfig.appId}`);
+    logMessage(`    ✅ appId: ${mergedConfig.appId}`);
   }
 }
 
@@ -336,9 +338,9 @@ module.exports = {
     }
     
     // Charger le fichier config.ini depuis les chemins mis à jour
-    console.log(`\n🔄 RECHARGEMENT CONFIG.INI APRÈS ELECTRON READY`);
-    console.log(`🔍 Chemins à tester:`);
-    updatedPaths.forEach((p, i) => console.log(`  ${i + 1}. ${p}`));
+    logMessage(`\n🔄 RECHARGEMENT CONFIG.INI APRÈS ELECTRON READY`);
+    logMessage(`🔍 Chemins à tester:`);
+    updatedPaths.forEach((p, i) => logMessage(`  ${i + 1}. ${p}`));
     
     let foundConfig = null;
     for (const configPath of updatedPaths) {
@@ -346,19 +348,19 @@ module.exports = {
         try {
           const iniContent = fs.readFileSync(configPath, 'utf-8');
           foundConfig = ini.parse(iniContent);
-          console.log(`✅ Config INI RECHARGÉE depuis: ${configPath}`);
+          logMessage(`✅ Config INI RECHARGÉE depuis: ${configPath}`);
           
           // Fusionner la nouvelle config
           this._remergeConfig(foundConfig);
           return;
         } catch (err) {
-          console.error(`❌ Erreur lors de la lecture de config.ini: ${err.message}`);
+          logMessage(`❌ Erreur lors de la lecture de config.ini: ${err.message}`, 'ERROR');
         }
       }
     }
     
     if (!foundConfig) {
-      console.log(`⚠️  Aucun config.ini trouvé aux chemins attendus`);
+      logMessage(`⚠️  Aucun config.ini trouvé aux chemins attendus`);
     }
   },
   // Fonction interne pour refusionner la config
@@ -376,27 +378,38 @@ module.exports = {
     }
     
     if (iniConfig.ui) {
+      logMessage(`  🎛️  Paramètres UI trouvés dans INI (reloadConfig): ${JSON.stringify(iniConfig.ui)}`);
       if (iniConfig.ui.disableBuddies !== undefined) {
         mergedConfig.ui.disableBuddies = iniConfig.ui.disableBuddies === '1' || iniConfig.ui.disableBuddies === true;
+        logMessage(`    ✅ disableBuddies: ${mergedConfig.ui.disableBuddies}`);
       }
       if (iniConfig.ui.disableDoNotDisturb !== undefined) {
         mergedConfig.ui.disableDoNotDisturb = iniConfig.ui.disableDoNotDisturb === '1' || iniConfig.ui.disableDoNotDisturb === true;
+        logMessage(`    ✅ disableDoNotDisturb: ${mergedConfig.ui.disableDoNotDisturb}`);
       }
       if (iniConfig.ui.disableCallForward !== undefined) {
         mergedConfig.ui.disableCallForward = iniConfig.ui.disableCallForward === '1' || iniConfig.ui.disableCallForward === true;
+        logMessage(`    ✅ disableCallForward: ${mergedConfig.ui.disableCallForward}`);
       }
       if (iniConfig.ui.disableGUISipAccount !== undefined) {
         mergedConfig.ui.disableGUISipAccount = iniConfig.ui.disableGUISipAccount === '1' || iniConfig.ui.disableGUISipAccount === true;
+        logMessage(`    ✅ disableGUISipAccount: ${mergedConfig.ui.disableGUISipAccount}`);
       }
       if (iniConfig.ui.Notifications !== undefined) {
+        logMessage(`    🔍 DEBUG Notifications brut: "${iniConfig.ui.Notifications}" (type: ${typeof iniConfig.ui.Notifications})`);
         mergedConfig.ui.Notifications = iniConfig.ui.Notifications === '1' || iniConfig.ui.Notifications === true;
+        logMessage(`    ✅ Notifications: ${mergedConfig.ui.Notifications}`);
       }
       if (iniConfig.ui.profilePicture !== undefined) {
         mergedConfig.ui.profilePicture = iniConfig.ui.profilePicture;
+        logMessage(`    ✅ profilePicture: ${mergedConfig.ui.profilePicture}`);
       }
       if (iniConfig.ui.CustomRingtone !== undefined) {
         mergedConfig.ui.CustomRingtone = iniConfig.ui.CustomRingtone;
+        logMessage(`    ✅ CustomRingtone: ${mergedConfig.ui.CustomRingtone}`);
       }
+    } else {
+      logMessage(`  ⚠️  Aucun paramètre UI trouvé dans INI (reloadConfig) - iniConfig.ui est undefined`);
     }
     
     if (iniConfig.audio) {
@@ -426,11 +439,11 @@ module.exports = {
       }
     }
     
-    console.log(`📋 Configuration refusionnée avec succès`);
+    logMessage(`📋 Configuration refusionnée avec succès`);
   }
 };
 
-console.log(`
+logMessage(`
 ✨ CONFIG FINALE EXPORTÉE:
   Environnement: ${environment}
   App Name: ${mergedConfig.appName}
@@ -438,5 +451,4 @@ console.log(`
   Server URL: ${mergedConfig.serverUrl}
   Window: ${JSON.stringify(mergedConfig.window || currentConfig.window)}
   UI: ${JSON.stringify(mergedConfig.ui || currentConfig.ui)}
-  Audio: ${JSON.stringify(mergedConfig.audio || currentConfig.audio)}
-`);
+  Audio: ${JSON.stringify(mergedConfig.audio || currentConfig.audio)}`);
