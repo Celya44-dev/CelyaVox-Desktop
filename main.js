@@ -1737,6 +1737,9 @@ setupUserDataPath();
 const logDir = path.join(globalUserDataPath, 'logs');
 const logger = new Logger(logDir);
 
+// Exposer le logger globalement pour que config.js puisse l'utiliser
+global.logger = logger;
+
 logger.log(`🚀 Application démarrée`);
 logger.log(`   Environnement: ${process.env.APP_ENV === 'dev' ? 'DEV' : 'PROD'}`);
 logger.log(`   Répertoire utilisateur: ${globalUserDataPath}`);

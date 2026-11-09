@@ -12,6 +12,17 @@ const ini = require('ini');
 // Lire l'environnement depuis package.json config ou variable d'environnement
 const environment = process.env.APP_ENV || packageJson.config?.environment || 'dev';
 
+// Helper pour loguer avec un logger ou console.error
+const logMessage = (message, level = 'INFO') => {
+  if (global.logger) {
+    if (level === 'INFO') global.logger.info(message);
+    else if (level === 'ERROR') global.logger.error(message);
+    else if (level === 'WARN') global.logger.warn(message);
+  } else {
+    console.error(`[${new Date().toISOString()}] [${level}] ${message}`);
+  }
+};
+
 // Charger la configuration .ini si elle existe
 let iniConfig = {};
 
@@ -69,30 +80,29 @@ const getConfigPath = () => {
 
 // Charger le fichier config.ini
 const configPaths = getConfigPath();
-console.log(`
+logMessage(`
 🔍 RECHERCHE CONFIG.INI (Environnement: ${environment})
 🔍 __dirname: ${__dirname}
 🔍 process.resourcesPath: ${process.resourcesPath || 'N/A'}
 🔍 Chemins à tester:
-${configPaths.map((p, i) => `  ${i + 1}. ${p}`).join('\n')}
-`);
+${configPaths.map((p, i) => `  ${i + 1}. ${p}`).join('\n')}`);
 
 for (const configPath of configPaths) {
-  console.log(`   Vérification: ${configPath}...`);
+  logMessage(`   Vérification: ${configPath}...`);
   if (fs.existsSync(configPath)) {
-    console.log(`   ✅ FICHIER TROUVÉ!`);
+    logMessage(`   ✅ FICHIER TROUVÉ!`);
     try {
       const iniContent = fs.readFileSync(configPath, 'utf-8');
       iniConfig = ini.parse(iniContent);
-      console.log(`✅ Config INI chargée depuis: ${configPath}`);
+      logMessage(`✅ Config INI chargée depuis: ${configPath}`);
       // Exposer le répertoire contenant config.ini
       global.configDirectory = path.dirname(configPath);
     } catch (err) {
-      console.error(`❌ Erreur lors de la lecture de config.ini: ${err.message}`);
+      logMessage(`❌ Erreur lors de la lecture de config.ini: ${err.message}`, 'ERROR');
     }
     break;
   } else {
-    console.log(`   ❌ Fichier non trouvé`);
+    logMessage(`   ❌ Fichier non trouvé`);
   }
 }
 
