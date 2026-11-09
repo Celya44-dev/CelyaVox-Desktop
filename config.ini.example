@@ -24,10 +24,22 @@
 # disableDoNotDisturb: Masque le bloc "Ne pas déranger (DND)" des Fonctions avancées (0=afficher, 1=masquer)
 # disableCallForward: Masque le bloc "Renvoi d'appel (CFU)" des Fonctions avancées (0=afficher, 1=masquer)
 # disableGUISipAccount: Masque le bloc "Compte" des paramètres (0=afficher, 1=masquer)
+# Notifications: Active/désactive les notifications (0=désactivé, 1=activé)
+# profilePicture: Image de profil utilisateur (URL ou nom de fichier)
+# Peut être une URL: https://example.com/profile.jpg
+# Ou un nom de fichier au même répertoire que config.ini: profile.jpg
+# Si la valeur actuelle est l'image par défaut, elle sera remplacée au démarrage
+# CustomRingtone: Sonnerie personnalisée par défaut (URL ou nom de fichier)
+# Peut être une URL: https://example.com/ringtone.mp3
+# Ou un nom de fichier au même répertoire que config.ini: ringtone.mp3
+# Formats supportés: .mp3, .wav, .ogg, .m4a, etc.
 # disableBuddies=0
 # disableDoNotDisturb=0
 # disableCallForward=0
 # disableGUISipAccount=0
+# Notifications=1
+# profilePicture=profile.jpg
+# CustomRingtone=ringtone.mp3
 
 # [audio]
 # Fixer le device de sortie de sonnerie par son label

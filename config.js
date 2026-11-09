@@ -81,6 +81,8 @@ for (const configPath of configPaths) {
       const iniContent = fs.readFileSync(configPath, 'utf-8');
       iniConfig = ini.parse(iniContent);
       console.log(`✅ Config INI chargée depuis: ${configPath}`);
+      // Exposer le répertoire contenant config.ini
+      global.configDirectory = path.dirname(configPath);
     } catch (err) {
       console.error(`❌ Erreur lors de la lecture de config.ini: ${err.message}`);
     }
@@ -103,7 +105,10 @@ const config = {
       disableBuddies: false,
       disableDoNotDisturb: false,
       disableCallForward: false,
-      disableGUISipAccount: false
+      disableGUISipAccount: false,
+      Notifications: true,
+      profilePicture: null,
+      CustomRingtone: null
     },
     audio: {
       ringerOutputLabel: null,  // Label du device de sortie pour la sonnerie
@@ -123,7 +128,10 @@ const config = {
       disableBuddies: false,
       disableDoNotDisturb: false,
       disableCallForward: false,
-      disableGUISipAccount: false
+      disableGUISipAccount: false,
+      Notifications: true,
+      profilePicture: null,
+      CustomRingtone: null
     },
     audio: {
       ringerOutputLabel: null,  // Label du device de sortie pour la sonnerie
@@ -181,6 +189,18 @@ if (iniConfig.ui) {
     mergedConfig.ui.disableGUISipAccount = iniConfig.ui.disableGUISipAccount === '1' || iniConfig.ui.disableGUISipAccount === true;
     console.log(`    ✅ disableGUISipAccount: ${mergedConfig.ui.disableGUISipAccount}`);
   }
+  if (iniConfig.ui.Notifications !== undefined) {
+    mergedConfig.ui.Notifications = iniConfig.ui.Notifications === '1' || iniConfig.ui.Notifications === true;
+    console.log(`    ✅ Notifications: ${mergedConfig.ui.Notifications}`);
+  }
+  if (iniConfig.ui.profilePicture !== undefined) {
+    mergedConfig.ui.profilePicture = iniConfig.ui.profilePicture;
+    console.log(`    ✅ profilePicture: ${mergedConfig.ui.profilePicture}`);
+  }
+  if (iniConfig.ui.CustomRingtone !== undefined) {
+    mergedConfig.ui.CustomRingtone = iniConfig.ui.CustomRingtone;
+    console.log(`    ✅ CustomRingtone: ${mergedConfig.ui.CustomRingtone}`);
+  }
 }
 
 if (iniConfig.audio) {
@@ -227,6 +247,8 @@ module.exports = {
   // Exposer la config INI pour débogage
   _iniConfig: iniConfig,
   _configPath: configPaths,
+  // Répertoire contenant config.ini
+  configDirectory: global.configDirectory,
   // Exposer les paramètres de fenêtre
   window: mergedConfig.window || currentConfig.window,
   // Exposer les paramètres UI
@@ -328,6 +350,15 @@ module.exports = {
       }
       if (iniConfig.ui.disableGUISipAccount !== undefined) {
         mergedConfig.ui.disableGUISipAccount = iniConfig.ui.disableGUISipAccount === '1' || iniConfig.ui.disableGUISipAccount === true;
+      }
+      if (iniConfig.ui.Notifications !== undefined) {
+        mergedConfig.ui.Notifications = iniConfig.ui.Notifications === '1' || iniConfig.ui.Notifications === true;
+      }
+      if (iniConfig.ui.profilePicture !== undefined) {
+        mergedConfig.ui.profilePicture = iniConfig.ui.profilePicture;
+      }
+      if (iniConfig.ui.CustomRingtone !== undefined) {
+        mergedConfig.ui.CustomRingtone = iniConfig.ui.CustomRingtone;
       }
     }
     
