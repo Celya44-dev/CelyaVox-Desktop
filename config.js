@@ -71,12 +71,16 @@ const getConfigPath = () => {
 const configPaths = getConfigPath();
 console.log(`
 🔍 RECHERCHE CONFIG.INI (Environnement: ${environment})
-Chemins à tester:
+🔍 __dirname: ${__dirname}
+🔍 process.resourcesPath: ${process.resourcesPath || 'N/A'}
+🔍 Chemins à tester:
 ${configPaths.map((p, i) => `  ${i + 1}. ${p}`).join('\n')}
 `);
 
 for (const configPath of configPaths) {
+  console.log(`   Vérification: ${configPath}...`);
   if (fs.existsSync(configPath)) {
+    console.log(`   ✅ FICHIER TROUVÉ!`);
     try {
       const iniContent = fs.readFileSync(configPath, 'utf-8');
       iniConfig = ini.parse(iniContent);
@@ -87,7 +91,10 @@ for (const configPath of configPaths) {
       console.error(`❌ Erreur lors de la lecture de config.ini: ${err.message}`);
     }
     break;
+  } else {
+    console.log(`   ❌ Fichier non trouvé`);
   }
+}
 }
 
 // Configuration par défaut pour chaque environnement
