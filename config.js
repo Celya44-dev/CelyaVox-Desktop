@@ -95,7 +95,6 @@ for (const configPath of configPaths) {
     console.log(`   ❌ Fichier non trouvé`);
   }
 }
-}
 
 // Configuration par défaut pour chaque environnement
 const config = {
