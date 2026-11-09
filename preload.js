@@ -99,11 +99,13 @@ ${JSON.stringify(celyavoxConfig, null, 2)}
 `);
   
   // Notifier les listeners
-  configUpdateCallbacks.forEach(cb => {
+  console.log(`[Preload] 📢 Appel des ${configUpdateCallbacks.length} callbacks...`);
+  configUpdateCallbacks.forEach((cb, index) => {
     try {
+      console.log(`[Preload] 📢 Exécution callback ${index + 1}/${configUpdateCallbacks.length}`);
       cb(celyavoxConfig);
     } catch (err) {
-      console.error('[Preload] Erreur lors du callback:', err);
+      console.error('[Preload] ❌ Erreur lors du callback:', err);
     }
   });
 }

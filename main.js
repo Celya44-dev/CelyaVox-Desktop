@@ -1047,7 +1047,8 @@ async function createWindow() {
       timeout: 30000,
       window: config.window,
       ui: config.ui,
-      audio: config.audio
+      audio: config.audio,
+      configDirectory: config.configDirectory
     };
     mainWindow.webContents.send('set-config', configToSend);
     console.log(`
