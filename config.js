@@ -46,21 +46,13 @@ let iniConfig = {};
 
 // Déterminer le chemin du fichier config.ini
 // Ordre de priorité:
-// 1. Répertoire d'installation (bundle app) - pour déploiements centralisés
-// 2. Répertoire utilisateur (userData) - pour personnalisation utilisateur
-// 3. Chemins de développement
+// 1. Répertoire utilisateur (userData) - pour personnalisation utilisateur
+// 2. Répertoire d'installation (bundle app) - pour déploiements centralisés
+// 3. Chemins de développement (seulement si app non packagée)
 const getConfigPath = () => {
   const configPaths = [];
   
-  // Priorité 1: Répertoire d'installation (bundle app)
-  if (process.resourcesPath) {
-    configPaths.push(path.join(process.resourcesPath, 'resources', 'config.ini'));
-    configPaths.push(path.join(process.resourcesPath, 'config.ini'));
-  }
-  configPaths.push(path.join(__dirname, 'resources', 'config.ini'));
-  configPaths.push(path.join(__dirname, 'config.ini'));
-  
-  // Priorité 2: Répertoire utilisateur (userData)
+  // Priorité 1: Répertoire utilisateur (userData) - VÉRIFIÉ EN PREMIER
   if (process.env.CELYAVOX_USER_CONFIG_PATH) {
     configPaths.push(process.env.CELYAVOX_USER_CONFIG_PATH);
   }
@@ -88,8 +80,17 @@ const getConfigPath = () => {
     }
   }
   
-  // Priorité 3: Chemins de développement
-  if (environment === 'dev') {
+  // Priorité 2: Répertoire d'installation (bundle app) - seulement avec process.resourcesPath
+  if (process.resourcesPath) {
+    configPaths.push(path.join(process.resourcesPath, 'resources', 'config.ini'));
+    configPaths.push(path.join(process.resourcesPath, 'config.ini'));
+  }
+  
+  // Priorité 3: Chemins de développement (seulement en DEV et si pas packagée)
+  // Note: Ne pas utiliser __dirname car il pointe à l'intérieur d'app.asar en packagé
+  if (environment === 'dev' && !process.resourcesPath) {
+    configPaths.push(path.join(__dirname, 'resources', 'config.ini'));
+    configPaths.push(path.join(__dirname, 'config.ini'));
     configPaths.push(path.join(__dirname, 'config', 'config.ini'));
   }
   
