@@ -12,14 +12,32 @@ const ini = require('ini');
 // Lire l'environnement depuis package.json config ou variable d'environnement
 const environment = process.env.APP_ENV || packageJson.config?.environment || 'dev';
 
-// Helper pour loguer avec un logger ou console.error
+// Queue pour stocker les logs avant que le logger global soit initialisé
+let logQueue = [];
+const queueLog = (message, level = 'INFO') => {
+  logQueue.push({ message, level, timestamp: new Date().toISOString() });
+};
+
+// Helper pour loguer avec un logger ou queue
 const logMessage = (message, level = 'INFO') => {
   if (global.logger) {
     if (level === 'INFO') global.logger.info(message);
     else if (level === 'ERROR') global.logger.error(message);
     else if (level === 'WARN') global.logger.warn(message);
   } else {
-    console.error(`[${new Date().toISOString()}] [${level}] ${message}`);
+    queueLog(message, level);
+  }
+};
+
+// Fonction pour vider la queue dans le logger
+const flushLogQueue = () => {
+  if (global.logger && logQueue.length > 0) {
+    logQueue.forEach(({ message, level }) => {
+      if (level === 'INFO') global.logger.info(message);
+      else if (level === 'ERROR') global.logger.error(message);
+      else if (level === 'WARN') global.logger.warn(message);
+    });
+    logQueue = [];
   }
 };
 
@@ -271,6 +289,8 @@ module.exports = {
   ui: mergedConfig.ui || currentConfig.ui,
   // Exposer les paramètres Audio
   audio: mergedConfig.audio || currentConfig.audio,
+  // Fonction pour vider la queue de logs
+  flushLogQueue,
   // Exporter une fonction pour recharger la config (sera appelée depuis main.js après app.whenReady())
   reloadConfig: function(appPath, resourcesPath) {
     // Mettre à jour les chemins de recherche avec les données d'Electron disponibles

@@ -1740,6 +1740,9 @@ const logger = new Logger(logDir);
 // Exposer le logger globalement pour que config.js puisse l'utiliser
 global.logger = logger;
 
+// Vider la queue de logs qui a été remplie lors du chargement de config.js
+config.flushLogQueue();
+
 logger.log(`🚀 Application démarrée`);
 logger.log(`   Environnement: ${process.env.APP_ENV === 'dev' ? 'DEV' : 'PROD'}`);
 logger.log(`   Répertoire utilisateur: ${globalUserDataPath}`);
