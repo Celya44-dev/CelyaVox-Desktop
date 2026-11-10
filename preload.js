@@ -46,6 +46,8 @@ contextBridge.exposeInMainWorld('electron', {
   notifyHangup: (callerInfo) => ipcRenderer.send('call-hangup', { callerName: callerInfo || 'Correspondant' }),
   // Get app info
   getAppInfo: () => ipcRenderer.invoke('get-app-info'),
+  // Read file as base64 data URL
+  readFileAsBase64: (filePath) => ipcRenderer.invoke('read-file-as-base64', filePath),
   // Check if sso.ini file exists
   checkSsoFile: () => ipcRenderer.invoke('check-sso-file'),
   // Initialize SAML authentication

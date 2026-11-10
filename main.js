@@ -1561,6 +1561,45 @@ ipcMain.on('log-to-file', (event, data) => {
   }
 });
 
+// ----------------------
+// IPC File Reading
+// ----------------------
+
+ipcMain.handle('read-file-as-base64', async (event, filePath) => {
+  try {
+    // Vérifier que le chemin est bien dans le répertoire de config
+    const normalizedPath = path.normalize(filePath);
+    const configDir = path.normalize(config.configDirectory || '/tmp');
+    
+    // Sécurité : vérifier que le fichier est dans le répertoire de config
+    if (!normalizedPath.startsWith(configDir)) {
+      throw new Error('Path traversal attempt detected');
+    }
+    
+    const fileContent = fs.readFileSync(normalizedPath);
+    const base64 = fileContent.toString('base64');
+    
+    // Déterminer le MIME type
+    const ext = path.extname(normalizedPath).toLowerCase();
+    let mimeType = 'application/octet-stream';
+    if (ext === '.png') mimeType = 'image/png';
+    else if (ext === '.jpg' || ext === '.jpeg') mimeType = 'image/jpeg';
+    else if (ext === '.gif') mimeType = 'image/gif';
+    else if (ext === '.webp') mimeType = 'image/webp';
+    else if (ext === '.mp3') mimeType = 'audio/mpeg';
+    else if (ext === '.wav') mimeType = 'audio/wav';
+    else if (ext === '.ogg') mimeType = 'audio/ogg';
+    
+    const dataUrl = `data:${mimeType};base64,${base64}`;
+    logger.log(`✅ Fichier lu avec succès: ${filePath} (${ext}, ${fileContent.length} bytes)`);
+    
+    return dataUrl;
+  } catch (error) {
+    logger.error(`❌ Erreur lecture fichier ${filePath}: ${error.message}`);
+    throw error;
+  }
+});
+
 // IPC: Get app info
 const packageJson = require('./package.json');
 ipcMain.handle('get-app-info', () => ({
