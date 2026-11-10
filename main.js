@@ -1051,7 +1051,7 @@ async function createWindow() {
       configDirectory: config.configDirectory
     };
     mainWindow.webContents.send('set-config', configToSend);
-    console.log(`
+    logger.log(`
 ✅ CONFIG ENVOYÉE VIA IPC:
 ${JSON.stringify(configToSend, null, 2)}
 `);
@@ -1549,6 +1549,17 @@ ipcMain.on('tray-left-menu-cache', (event, payload) => {
 // ----------------------
 ipcMain.handle('db-get', (event, key) => null);
 ipcMain.handle('db-set', (event, key, value) => true);
+
+// ----------------------
+// IPC Logging
+// ----------------------
+ipcMain.on('log-to-file', (event, data) => {
+  const { level, message, timestamp } = data;
+  if (logger) {
+    const logMethod = level.toLowerCase() === 'error' ? 'error' : 'log';
+    logger[logMethod](`[${timestamp}] [${level}] [RENDERER] ${message}`);
+  }
+});
 
 // IPC: Get app info
 const packageJson = require('./package.json');

@@ -90,22 +90,41 @@ const celyavoxConfig = {
 // Listes des callbacks d'update
 let configUpdateCallbacks = [];
 
+// Fonction pour logger dans le fichier debug.log via IPC
+function logToFile(message, level = 'INFO') {
+  try {
+    ipcRenderer.send('log-to-file', {
+      level: level,
+      message: message,
+      timestamp: new Date().toISOString()
+    });
+  } catch (e) {
+    // IPC peut ne pas être prêt encore, ignorer silencieusement
+  }
+}
+
 // Fonction pour update la config depuis main
 function updateCelyavoxConfig(newConfig) {
   Object.assign(celyavoxConfig, newConfig);
-  console.log(`
-[Preload] ✅ CONFIG REÇUE ET APPLIQUÉE:
-${JSON.stringify(celyavoxConfig, null, 2)}
-`);
+  const msg1 = `[Preload] ✅ CONFIG REÇUE ET APPLIQUÉE:\n${JSON.stringify(celyavoxConfig, null, 2)}`;
+  console.log(msg1);
+  logToFile(msg1, 'INFO');
   
   // Notifier les listeners
-  console.log(`[Preload] 📢 Appel des ${configUpdateCallbacks.length} callbacks...`);
+  const msg2 = `[Preload] 📢 Appel des ${configUpdateCallbacks.length} callbacks...`;
+  console.log(msg2);
+  logToFile(msg2, 'INFO');
+  
   configUpdateCallbacks.forEach((cb, index) => {
     try {
-      console.log(`[Preload] 📢 Exécution callback ${index + 1}/${configUpdateCallbacks.length}`);
+      const msg3 = `[Preload] 📢 Exécution callback ${index + 1}/${configUpdateCallbacks.length}`;
+      console.log(msg3);
+      logToFile(msg3, 'INFO');
       cb(celyavoxConfig);
     } catch (err) {
-      console.error('[Preload] ❌ Erreur lors du callback:', err);
+      const msg4 = `[Preload] ❌ Erreur lors du callback: ${err.message}`;
+      console.error(msg4);
+      logToFile(msg4, 'ERROR');
     }
   });
 }
@@ -115,9 +134,15 @@ function onConfigUpdate(callback) {
   configUpdateCallbacks.push(callback);
 }
 
+// Override console.log pour aussi envoyer via IPC après le contexte bridge
+const originalLog = console.log;
+const originalError = console.error;
+const originalWarn = console.warn;
+
 contextBridge.exposeInMainWorld('celyavoxConfig', celyavoxConfig);
 contextBridge.exposeInMainWorld('updateCelyavoxConfig', updateCelyavoxConfig);
 contextBridge.exposeInMainWorld('onConfigUpdate', onConfigUpdate);
+contextBridge.exposeInMainWorld('logToFile', logToFile);
 ipcRenderer.on('set-config', (event, config) => {
   updateCelyavoxConfig(config);
 });
