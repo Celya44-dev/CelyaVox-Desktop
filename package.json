@@ -1,6 +1,6 @@
 {
   "name": "CelyaVox",
-  "version": "1.1.6",
+  "version": "1.1.7",
   "description": "Electron wrapper for CelyaVox",
   "repository": {
     "type": "git",
@@ -77,6 +77,7 @@
       "notification-call.html",
       "enable-text-selection.css",
       "config.js",
+      "config-locations.js",
       "config.ini.example",
       "postinstall_debian.sh",
       "postinstall_windows.ps1",
@@ -186,7 +187,8 @@
       "perMachine": true,
       "runAfterFinish": false,
       "additionalWixArgs": [
-        "-ext", "WixUtilExtension"
+        "-ext",
+        "WixUtilExtension"
       ]
     },
     "mac": {

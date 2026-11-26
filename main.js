@@ -21,6 +21,7 @@ const { app, BrowserWindow, ipcMain, dialog, session, Tray, Menu, nativeImage, N
 const path = require('path');
 const fs = require('fs');
 const Logger = require(path.join(__dirname, 'logger'));
+const configLocations = require('./config-locations');
 
 // ============================================================
 // ÉTAPE 1: Définir APP_ENV TRÈS TÔT avant tout autre code
@@ -52,22 +53,9 @@ function setupUserDataPath() {
   // APP_ENV a déjà été défini au-dessus
   const isDev = process.env.APP_ENV === 'dev';
   const platform = process.platform;
-  const appName = isDev ? 'CelyaVox-dev' : 'CelyaVox';
-  
-  let userDataPath;
-  
-  if (platform === 'win32') {
-    // Windows: %APPDATA%\CelyaVox ou %APPDATA%\CelyaVox-dev
-    const appData = process.env.APPDATA || path.join(app.getPath('home'), 'AppData', 'Roaming');
-    userDataPath = path.join(appData, appName);
-  } else if (platform === 'darwin') {
-    // macOS: ~/Library/Application Support/CelyaVox
-    userDataPath = path.join(app.getPath('home'), 'Library', 'Application Support', appName);
-  } else {
-    // Linux et autres: ~/.config/CelyaVox
-    userDataPath = path.join(app.getPath('home'), '.config', appName);
-  }
-  
+  // Linux: ~/.config/CelyaVox | macOS: ~/Library/Application Support/CelyaVox | Windows: %APPDATA%\CelyaVox
+  const userDataPath = configLocations.getUserConfigDir();
+
   globalUserDataPath = userDataPath;
   app.setPath('userData', userDataPath);
   
@@ -79,25 +67,29 @@ function setupUserDataPath() {
 // ============================================================
 // Vérifier l'état du fichier sso.ini
 // ============================================================
-function verifySSOStatus() {
-  const fs = require('fs');
-  const path = require('path');
-  const ini = require('ini');
-  
-  // Chercher sso.ini dans : resourcesPath → __dirname → user directory
-  const resourcesPath = process.resourcesPath;
-  const searchPaths = [];
-  
-  if (resourcesPath) {
-    searchPaths.push(path.join(resourcesPath, 'sso.ini'));
+
+/**
+ * Vrai si le contenu de sso.ini contient une section [SAML] (casse exacte,
+ * comme l'exige loadSAMLConfig) avec au moins une valeur non vide.
+ * Le parseur INI ignore les lignes commentées par ';' ou '#'.
+ */
+function isSsoConfigured(content) {
+  try {
+    const parsed = require('ini').parse(content);
+    const saml = parsed.SAML;
+    return !!saml && typeof saml === 'object' &&
+      Object.values(saml).some(v => v !== true && String(v).trim() !== '');
+  } catch {
+    return false;
   }
-  
-  // Dans le bundle Electron, __dirname est le répertoire de la ressource
-  searchPaths.push(path.join(__dirname, '..', 'sso.ini'));
-  searchPaths.push(path.join(__dirname, 'sso.ini'));
-  
-  // Répertoire utilisateur
-  searchPaths.push(path.join(globalUserDataPath, 'sso.ini'));
+}
+
+function verifySSOStatus() {
+  const ini = require('ini');
+
+  // Même ordre que findSsoFile() : administrateur puis utilisateur
+  const ssoSearch = configLocations.describeSearchPaths('sso.ini');
+  const searchPaths = [...ssoSearch.admin, ssoSearch.user];
   
   // Afficher la recherche
   logger.log(`\n🔍 Recherche de sso.ini:`);
@@ -115,14 +107,11 @@ function verifySSOStatus() {
         const content = fs.readFileSync(filePath, 'utf-8');
         const stats = fs.statSync(filePath);
         
-        // Vérifier si le fichier est configuré (pas vide ni commenté)
-        const hasConfig = content.split('\n').some(line => {
-          const trimmed = line.trim();
-          return trimmed && !trimmed.startsWith(';') && !trimmed.startsWith('#');
-        });
-        
+        // Vérifier si le fichier est configuré (section [SAML] avec au moins une valeur)
+        const hasConfig = isSsoConfigured(content);
+
         logger.log(`       → Taille: ${stats.size} bytes`);
-        logger.log(`       → Configuré: ${hasConfig ? '✅ OUI' : '⚠️ NON (vide ou commenté)'}`);
+        logger.log(`       → Configuré: ${hasConfig ? '✅ OUI' : '⚠️ NON (section [SAML] absente, vide ou commentée)'}`);
         
         // Parser le fichier INI et afficher les sections
         if (hasConfig) {
@@ -166,26 +155,15 @@ function verifySSOStatus() {
 }
 
 // ============================================================
-// Initialiser le fichier config.ini
+// Initialiser le répertoire utilisateur
 // ============================================================
+// config.ini : aucun fichier n'est créé dans le profil. L'administrateur déploie le sien
+// (voir config-locations.js) et l'utilisateur crée le sien s'il veut surcharger des valeurs.
+// sso.ini : si aucun sso.ini n'existe (ni administrateur, ni utilisateur), un modèle
+// entièrement commenté est copié dans le profil pour faciliter la configuration.
 function initializeConfigFile() {
-  // APP_ENV a déjà été défini au-dessus
-  const isDev = process.env.APP_ENV === 'dev';
-  let userDataPath = globalUserDataPath;
-  
-  // Fallback si globalUserDataPath n'est pas encore défini
-  if (!userDataPath) {
-    userDataPath = isDev
-      ? path.join(app.getPath('home'), '.config', 'CelyaVox-dev')
-      : path.join(app.getPath('home'), '.config', 'CelyaVox');
-    globalUserDataPath = userDataPath;
-  }
-  
-  try {
-  } catch (err) {
-    console.error(`❌ Erreur lors de la détermination du chemin userData: ${err.message}`);
-    return;
-  }
+  const userDataPath = globalUserDataPath || configLocations.getUserConfigDir();
+  globalUserDataPath = userDataPath;
   
   // Créer le répertoire s'il n'existe pas
   try {
@@ -198,123 +176,38 @@ function initializeConfigFile() {
     return;
   }
   
-  const userConfigPath = path.join(userDataPath, 'config.ini');
-  
-  // Essayer plusieurs chemins pour trouver config.ini dans le bundle
-  let bundleConfigPath = null;
-  const possiblePaths = [
-    path.join(app.getAppPath(), 'resources', 'config.ini'),
-    path.join(process.resourcesPath || __dirname, 'resources', 'config.ini'),
-    path.join(__dirname, 'resources', 'config.ini'),
-    path.join(process.resourcesPath || __dirname, 'config.ini'),
-    path.join(__dirname, 'config.ini'),
-    path.join(app.getAppPath(), 'config.ini'),
-    path.join(__dirname, 'config', 'config.ini'),
-  ];
-  
-  for (const p of possiblePaths) {
-    if (fs.existsSync(p)) {
-      bundleConfigPath = p;
-      console.log(`✅ Fichier bundle trouvé: ${bundleConfigPath}`);
-      break;
-    }
+  const existingSso = configLocations.findSsoFile();
+  if (existingSso) {
+    console.log(`✅ Fichier sso.ini utilisé: ${existingSso}`);
+    return;
   }
   
-  // Si le fichier utilisateur n'existe pas, le copier depuis le bundle
-  if (!fs.existsSync(userConfigPath)) {
-    if (bundleConfigPath) {
-      try {
-        fs.copyFileSync(bundleConfigPath, userConfigPath);
-        console.log(`📋 Fichier config.ini copié vers: ${userConfigPath}`);
-      } catch (err) {
-        console.error(`❌ Erreur lors de la copie de config.ini: ${err.message}`);
-      }
-    } else {
-      // Fallback: créer un fichier config.ini par défaut dans le répertoire utilisateur
-      console.warn(`⚠️  Fichier bundle config.ini non trouvé. Création d'un fichier par défaut...`);
-      const defaultConfig = `; Configuration CelyaVox - Auto-généré si absent du bundle
-; Ce fichier peut être modifié pour personnaliser l'application
-
-[window]
-; width=1280
-; height=820
-
-[server]
-; Paramètres serveur optionnels
-; url=
-; port=
-`;
-      try {
-        fs.writeFileSync(userConfigPath, defaultConfig, 'utf-8');
-        console.log(`✅ Fichier config.ini par défaut créé: ${userConfigPath}`);
-      } catch (err) {
-        console.error(`❌ Erreur lors de la création du fichier config.ini: ${err.message}`);
-      }
-    }
-  } else {
-    console.log(`✅ Fichier config.ini existant utilisé: ${userConfigPath}`);
-  }
-  
-  // ============================================================
-  // Créer sso.ini depuis sso.ini.example si absent
-  // ============================================================
   const userSsoPath = path.join(userDataPath, 'sso.ini');
-  let bundleSsoPath = null;
-  const possibleSsoPaths = [
+  const possibleSsoExamples = [
     path.join(app.getAppPath(), 'saml-package', 'examples', 'sso.ini.example'),
-    path.join(process.resourcesPath || __dirname, 'saml-package', 'examples', 'sso.ini.example'),
     path.join(__dirname, 'saml-package', 'examples', 'sso.ini.example'),
-    path.join(app.getAppPath(), 'sso.ini.example'),
-    path.join(process.resourcesPath || __dirname, 'sso.ini.example'),
-    path.join(__dirname, 'sso.ini.example'),
   ];
+  const bundleSsoPath = possibleSsoExamples.find(p => fs.existsSync(p));
   
-  for (const p of possibleSsoPaths) {
-    if (fs.existsSync(p)) {
-      bundleSsoPath = p;
-      console.log(`✅ Fichier sso.ini.example trouvé: ${bundleSsoPath}`);
-      break;
-    }
-  }
-  
-  // Si le fichier utilisateur n'existe pas, le copier depuis l'exemple
-  if (!fs.existsSync(userSsoPath)) {
+  try {
     if (bundleSsoPath) {
-      try {
-        fs.copyFileSync(bundleSsoPath, userSsoPath);
-        console.log(`📋 Fichier sso.ini copié vers: ${userSsoPath}`);
-      } catch (err) {
-        console.error(`❌ Erreur lors de la copie de sso.ini: ${err.message}`);
-      }
+      fs.copyFileSync(bundleSsoPath, userSsoPath);
+      console.log(`📋 Modèle sso.ini copié vers: ${userSsoPath}`);
     } else {
-      // Fallback: créer un fichier sso.ini par défaut
-      console.warn(`⚠️ Fichier sso.ini.example non trouvé. Création d'un fichier par défaut...`);
-      const defaultSso = `; Configuration SAML SSO - Auto-généré si absent du bundle
-; À personnaliser avec vos paramètres SAML
+      const defaultSso = `# Configuration SAML SSO - modèle auto-généré
+# Décommenter la section [SAML] et renseigner vos paramètres pour activer le SSO.
 
-[saml]
-enabled=false
-; entry_point=https://idp.example.com/sso
-; issuer=https://celyavox.example.com
-; cert=
-; identifierFormat=urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress
+# [SAML]
+# metadataUrl=https://your-idp.example.com/metadata.xml
+# issuer=urn:myapp:identifier
+# callbackUrl=http://localhost:3001/auth/saml/callback
 `;
-      try {
-        fs.writeFileSync(userSsoPath, defaultSso, 'utf-8');
-        console.log(`✅ Fichier sso.ini par défaut créé: ${userSsoPath}`);
-      } catch (err) {
-        console.error(`❌ Erreur lors de la création du fichier sso.ini: ${err.message}`);
-      }
+      fs.writeFileSync(userSsoPath, defaultSso, 'utf-8');
+      console.log(`✅ Modèle sso.ini créé: ${userSsoPath}`);
     }
-  } else {
-    console.log(`✅ Fichier sso.ini existant utilisé: ${userSsoPath}`);
+  } catch (err) {
+    console.error(`❌ Erreur lors de la création du modèle sso.ini: ${err.message}`);
   }
-  
-  // Stocker le chemin userData dans une variable globale pour accès futur
-  globalUserDataPath = userDataPath;
-  
-  // Passer le chemin via une variable d'environnement pour config.js
-  process.env.CELYAVOX_USER_CONFIG_PATH = userConfigPath;
 }
 
 // ============================================================
@@ -508,7 +401,7 @@ async function initializeSAML(mainWindow) {
     try {
       console.log('[SAML] 2️⃣ Chargement de la configuration SAML...');
       // Charger la configuration SAML
-      const samlConfig = loadSAMLConfig();
+      const samlConfig = loadSAMLConfig(configLocations.findSsoFile() || undefined);
       console.log('[SAML] ✅ 2️⃣ Configuration SAML chargée:', JSON.stringify(samlConfig, null, 2));
       
       if (!samlConfig || typeof samlConfig !== 'object') {
@@ -521,7 +414,7 @@ async function initializeSAML(mainWindow) {
 
     try {
       console.log('[SAML] 3️⃣ Création du client SAML...');
-      const samlConfig = loadSAMLConfig();
+      const samlConfig = loadSAMLConfig(configLocations.findSsoFile() || undefined);
       // Créer le client SAML
       samlClient = new SamlClient(samlConfig, {
         port: 3001,
@@ -660,7 +553,8 @@ console.log(`
 🔍 INFORMATION DEBUG CONFIG:
   - process.resourcesPath: ${process.resourcesPath}
   - __dirname: ${__dirname}
-  - process.env.CELYAVOX_USER_CONFIG_PATH: ${process.env.CELYAVOX_USER_CONFIG_PATH}
+  - config.ini administrateur: ${config._configPath.admin || 'aucun'}
+  - config.ini utilisateur: ${config._configPath.user || 'aucun'}
   - NODE_ENV: ${process.env.NODE_ENV}
   - APP_ENV: ${process.env.APP_ENV}
 `);
@@ -694,6 +588,8 @@ let pendingTelNumber = null;
 let windowStateSaveTimer = null;
 
 const TEL_PROTOCOL = 'tel';
+// Liens d'appel acceptes : tel: et callto: (ex. tel:+33123456789, callto://+33123456789)
+const TEL_URL_REGEX = /^(tel|callto):/i;
 // Ces fichiers utilisent le userData path défini par setupUserDataPath()
 // Ils sont utilisés via des fonctions getter pour obtenir le bon path
 function getTelPromptStateFilePath() {
@@ -772,8 +668,8 @@ function markTelProtocolPromptShown() {
 function normalizeTelUrl(url) {
   if (!url) return '';
   const trimmed = String(url).trim();
-  if (!/^tel:/i.test(trimmed)) return '';
-  let value = trimmed.replace(/^tel:/i, '');
+  if (!TEL_URL_REGEX.test(trimmed)) return '';
+  let value = trimmed.replace(TEL_URL_REGEX, '');
   if (value.startsWith('//')) value = value.slice(2);
   value = value.split(/[;?]/)[0];
   return decodeURIComponent(value).trim();
@@ -781,7 +677,7 @@ function normalizeTelUrl(url) {
 
 function extractTelUrlFromArgs(args) {
   if (!Array.isArray(args)) return '';
-  const found = args.find(arg => typeof arg === 'string' && /^tel:/i.test(arg.trim()));
+  const found = args.find(arg => typeof arg === 'string' && TEL_URL_REGEX.test(arg.trim()));
   return found || '';
 }
 
@@ -1567,12 +1463,12 @@ ipcMain.on('log-to-file', (event, data) => {
 
 ipcMain.handle('read-file-as-base64', async (event, filePath) => {
   try {
-    // Vérifier que le chemin est bien dans le répertoire de config
-    const normalizedPath = path.normalize(filePath);
-    const configDir = path.normalize(config.configDirectory || '/tmp');
-    
-    // Sécurité : vérifier que le fichier est dans le répertoire de config
-    if (!normalizedPath.startsWith(configDir)) {
+    // Sécurité : le fichier doit se trouver dans un répertoire de configuration
+    // (administrateur ou utilisateur)
+    const normalizedPath = path.resolve(String(filePath || ''));
+    const allowed = (config.allowedFileDirectories || [])
+      .some(dir => configLocations.isPathInside(normalizedPath, dir));
+    if (!allowed) {
       throw new Error('Path traversal attempt detected');
     }
     
@@ -1635,16 +1531,9 @@ ipcMain.handle('check-sso-file', async (event) => {
     
     console.log('[DEBUG] globalUserDataPath:', globalUserDataPath);
     
-    // Chercher sso.ini d'abord dans le répertoire d'installation, puis dans le répertoire utilisateur
-    const possibleSsoConfigPaths = [
-      path.join(app.getAppPath(), 'sso.ini'),
-      path.join(app.getAppPath(), 'resources', 'sso.ini'),
-      path.join(process.resourcesPath || __dirname, 'sso.ini'),
-      path.join(process.resourcesPath || __dirname, 'resources', 'sso.ini'),
-      path.join(__dirname, 'sso.ini'),
-      path.join(__dirname, 'resources', 'sso.ini'),
-      path.join(globalUserDataPath, 'sso.ini'),
-    ];
+    // Même ordre que loadSAMLConfig : administrateur puis utilisateur
+    const ssoSearch = configLocations.describeSearchPaths('sso.ini');
+    const possibleSsoConfigPaths = [...ssoSearch.admin, ssoSearch.user];
     
     let ssoFilePath = null;
     let exists = false;
@@ -1671,39 +1560,8 @@ ipcMain.handle('check-sso-file', async (event) => {
       try {
         const content = fs.readFileSync(ssoFilePath, 'utf-8');
         
-        // Vérifier que le fichier contient une configuration SAML valide
-        // (pas juste vide ou commenté)
-        const lines = content.split('\n');
-        let inSamlSection = false;
-        let hasConfiguration = false;
-        
-        for (const line of lines) {
-          const trimmed = line.trim();
-          
-          // Vérifier section [SAML]
-          if (trimmed === '[SAML]' || trimmed === '[saml]') {
-            inSamlSection = true;
-            continue;
-          }
-          
-          // Arrêter si on change de section
-          if (trimmed.startsWith('[') && trimmed !== '[SAML]' && trimmed !== '[saml]') {
-            inSamlSection = false;
-          }
-          
-          // Dans la section SAML, chercher une configuration valide
-          if (inSamlSection && !trimmed.startsWith('#') && trimmed.length > 0) {
-            if (trimmed.includes('=')) {
-              // Vérifier qu'il y a au moins une clé=valeur (pas juste commentée)
-              const [key, value] = trimmed.split('=', 2);
-              if (key.trim() && value.trim()) {
-                hasConfiguration = true;
-                console.log(`   ✅ Paramètre trouvé: ${key.trim()}`);
-                break; // Une seule config suffit pour dire que SAML est configuré
-              }
-            }
-          }
-        }
+        // Section [SAML] avec au moins une valeur (lignes ';' et '#' ignorées)
+        const hasConfiguration = isSsoConfigured(content);
         
         configured = hasConfiguration;
         if (configured) {
@@ -1804,10 +1662,6 @@ logger.log(`   Fichier de log: ${logger.getLogFilePath()}`);
 // App ready
 // ----------------------
 app.whenReady().then(async () => {
-  // Recharger la configuration maintenant qu'Electron est prêt
-  // Cela permet de chercher dans le répertoire d'installation
-  config.reloadConfig(app.getAppPath(), process.resourcesPath);
-  
   // Afficher la configuration chargée
   logger.log(`\n${'='.repeat(60)}`);
   logger.log(`📋 CONFIGURATION CHARGÉE:`);
@@ -1827,11 +1681,11 @@ app.whenReady().then(async () => {
   const ssoStatus = verifySSOStatus();
   logger.log(`${'='.repeat(60)}\n`);
   
-  // Réinitialiser le fichier config si nécessaire
+  // Préparer le répertoire utilisateur (et un modèle sso.ini si aucun n'existe)
   try {
     initializeConfigFile();
   } catch (err) {
-    logger.error(`❌ Erreur lors de l'initialisation du config.ini: ${err.message}`);
+    logger.error(`❌ Erreur lors de l'initialisation du répertoire utilisateur: ${err.message}`);
   }
   
   registerTelProtocolClient();

@@ -1,142 +1,113 @@
-# Configuration INI - Protection contre l'écrasement
+# Fichiers de configuration `config.ini` et `sso.ini`
 
-## 🎯 Système implémenté
+CelyaVox lit sa configuration à deux niveaux, pour qu'un administrateur puisse configurer
+un poste partagé par plusieurs utilisateurs, tout en laissant chaque utilisateur
+personnaliser ses propres réglages.
 
-Le fichier `config.ini` est maintenant **protégé contre l'écrasement** lors des mises à jour. Voici comment:
+## 📁 Emplacements
 
-## 📁 Localisation des fichiers
+### Fichiers ADMINISTRATEUR (un par poste, communs à tous les utilisateurs)
 
-### Développement
-- **Emplacement:** `/opt/CelyaVox-Desktop/config.ini` (à la racine du projet)
-- **Lecture:** Depuis la racine du projet
+Le premier dossier qui contient le fichier est utilisé :
 
-### Production
-- **Bundle app:** `config.ini` empaqueté avec l'exécutable (via electron-builder)
-- **Utilisateur:** `~/.config/CelyaVox/config.ini` (Linux)
-  - `~/Library/Application Support/CelyaVox/config.ini` (macOS)
-  - `%APPDATA%\CelyaVox\config.ini` (Windows)
+| Priorité | Emplacement |
+|---|---|
+| 1 | dossier défini dans la variable d'environnement `CELYAVOX_ADMIN_CONFIG_DIR` |
+| 2 | **Linux** : `/etc/celyavox/` — **Windows** : `%ProgramData%\CelyaVox\` (en général `C:\ProgramData\CelyaVox\`) — **macOS** : `/Library/Application Support/CelyaVox/` |
+| 3 | dossier d'installation, pour compatibilité : `<install>/resources/`, `<install>/resources/resources/`, `<install>/resources/app.asar.unpacked/resources/` |
 
-## 🔄 Flux au démarrage
+En version **dev**, les dossiers système sont `/etc/celyavox-dev/`, `%ProgramData%\CelyaVox-dev\` et `/Library/Application Support/CelyaVox-dev/`.
 
-```
-1. main.js démarre
-   ↓
-2. initializeConfigFile() exécutée
-   ├─ Détermine le chemin userData selon l'environnement
-   ├─ Crée le répertoire s'il n'existe pas
-   ├─ SI config.ini n'existe PAS dans userData:
-   │  └─ COPIE depuis le bundle app
-   └─ SI config.ini EXISTE dans userData:
-      └─ L'utilise (JAMAIS écrasé)
-   ↓
-3. Chemin passé via process.env.CELYAVOX_USER_CONFIG_PATH
-   ↓
-4. config.js charge depuis process.env (userData en priorité)
-   ↓
-5. Configuration disponible pour l'app
-```
+> ⚠️ Sous Windows, le dossier d'installation est vidé à chaque mise à jour. Déposez les
+> fichiers administrateur dans `%ProgramData%\CelyaVox\`.
 
-## 🛡️ Protection contre l'écrasement
+### Fichiers UTILISATEUR (optionnels, dans le profil)
 
-### Lors d'une mise à jour
-1. L'utilisateur installe la nouvelle version
-2. electron-builder installe les fichiers du bundle (y compris `config.ini`)
-3. **MAIS** le fichier du userData n'est **JAMAIS** touché
-4. L'app continue d'utiliser le fichier de l'utilisateur
+| Système | Emplacement |
+|---|---|
+| Linux | `~/.config/CelyaVox/` |
+| Windows | `%APPDATA%\CelyaVox\` |
+| macOS | `~/Library/Application Support/CelyaVox/` |
 
-### Priorité de chargement
-```javascript
-1. userData/config.ini (JAMAIS écrasé) ✅ PRIORITÉ MAXIMALE
-2. ./config.ini en dev (pour développement)
-3. Bundle app/config.ini (fallback, ne s'utilise que pour la première copie)
-```
+L'application ne crée **pas** de `config.ini` dans le profil : c'est l'utilisateur qui le crée s'il veut changer un réglage.
 
-## 📋 Fichiers modifiés
+## 🔀 Règles de priorité
 
-### config.js
-- Recherche d'abord dans `process.env.CELYAVOX_USER_CONFIG_PATH`
-- Fallback sur chemins de développement et bundle
-- Fusionne les valeurs avec les defaults
-
-### main.js
-- **Nouvelle fonction `initializeConfigFile()`** qui:
-  - Détermine le chemin userData
-  - Crée le répertoire si besoin
-  - Copie le fichier depuis le bundle si c'est la première exécution
-  - Passe le chemin via `process.env.CELYAVOX_USER_CONFIG_PATH`
-- Appelée deux fois:
-  - Au top-level avant de charger config.js
-  - Dans `app.whenReady()` pour confirmer
-
-## 💾 Cycle de vie du fichier
+### `config.ini` : fusion clé par clé
 
 ```
-PREMIÈRE INSTALLATION
-  ↓
-Bundle app contient config.ini
-  ↓
-main.js détecte que userData/config.ini n'existe pas
-  ↓
-COPIE de bundle/config.ini → userData/config.ini
-  ↓
-L'utilisateur peut éditer userData/config.ini
-  ↓
-  
-MISE À JOUR (nouvelle version)
-  ↓
-Nouveau bundle app avec config.ini (éventuellement mis à jour)
-  ↓
-main.js détecte que userData/config.ini EXISTE
-  ↓
-✅ NE COPIE PAS - utilise le fichier existant
-  ↓
-Configuration de l'utilisateur PRÉSERVÉE ✅
+valeurs par défaut (config.js)
+   ← config.ini ADMINISTRATEUR
+      ← config.ini UTILISATEUR
 ```
 
-## 🔍 Logs de débogage
+L'utilisateur ne met dans son fichier **que les clés qu'il veut changer**. Toutes les autres
+viennent du fichier administrateur.
 
-Au démarrage, vous verrez:
-```
-✅ Configuration INI chargée depuis: /home/user/.config/CelyaVox/config.ini
+Exemple :
+
+```ini
+; /etc/celyavox/config.ini (administrateur)
+[server]
+serverUrl=https://celyavox.example.com/phone
+[ui]
+disableBuddies=1
+Notifications=1
 ```
 
-Ou lors de la première exécution:
-```
-📋 Fichier config.ini copié vers: /home/user/.config/CelyaVox/config.ini
+```ini
+; ~/.config/CelyaVox/config.ini (utilisateur)
+[ui]
+Notifications=0
 ```
 
-## 🧪 Test
+Résultat : `serverUrl` et `disableBuddies` viennent de l'administrateur, et `Notifications=0` de l'utilisateur.
 
-### Développement
+### `sso.ini` : le fichier administrateur l'emporte
+
+- Si un `sso.ini` administrateur existe, il est utilisé et le fichier utilisateur est ignoré.
+- Sinon, le `sso.ini` du profil utilisateur est utilisé.
+- Si aucun n'existe, un modèle entièrement commenté est copié dans le profil au premier lancement.
+
+Le SSO n'est activé que si le fichier contient une section `[SAML]`, en majuscules, avec au moins une valeur non commentée.
+
+### Fichiers référencés par nom (`profilePicture`, `CustomRingtone`)
+
+Un nom de fichier comme `profilePicture=logo.png` est cherché dans le dossier du `config.ini`
+qui définit la clé : celui de l'utilisateur s'il la définit, sinon celui de l'administrateur.
+L'application ne peut lire que des fichiers situés dans les dossiers administrateur ou utilisateur.
+
+## 🚀 Déploiement par l'administrateur
+
+**Linux (.deb)**
 ```bash
-npm start:dev
-# Vérifier que config.ini est lu depuis la racine du projet
+sudo mkdir -p /etc/celyavox
+sudo cp config.ini sso.ini /etc/celyavox/
+sudo chmod 644 /etc/celyavox/*.ini
 ```
 
-### Simuler une mise à jour
-1. Modifier `config.ini` (ajouter une clé personnalisée)
-2. Éditer le fichier dans userData
-3. Simuler une réinstallation
-4. Vérifier que le fichier userData est préservé
+**Windows (GPO, Intune, script)**
+```powershell
+New-Item -ItemType Directory -Force "$env:ProgramData\CelyaVox"
+Copy-Item config.ini, sso.ini "$env:ProgramData\CelyaVox\"
+```
 
-## 📦 Déploiement
+Les mises à jour de l'application ne touchent jamais à ces fichiers.
 
-### Linux (DEB, RPM, AppImage)
-- Premier install: `config.ini` copié vers `~/.config/CelyaVox/config.ini`
-- Mise à jour: Fichier utilisateur préservé ✅
+## 🔍 Logs
 
-### Windows (MSI, Portable)
-- Premier install: `config.ini` copié vers `%APPDATA%\CelyaVox\config.ini`
-- Mise à jour: Fichier utilisateur préservé ✅
+Au démarrage, le log indique les dossiers parcourus et les fichiers retenus :
+```
+🔍 Administrateur (premier trouvé):
+  1. /etc/celyavox/config.ini  ✅
+🔍 Utilisateur:
+  /home/jean/.config/CelyaVox/config.ini  (absent)
+```
 
-### macOS (DMG, ZIP)
-- Premier install: `config.ini` copié vers `~/Library/Application Support/CelyaVox/config.ini`
-- Mise à jour: Fichier utilisateur préservé ✅
+Les logs sont écrits dans `<profil utilisateur>/logs/`.
 
-## ✅ Garanties
+## 🧩 Code
 
-- ✅ **Première exécution:** config.ini copié depuis le bundle
-- ✅ **Modifications utilisateur:** Préservées entre les versions
-- ✅ **Mises à jour:** Ne touchent jamais le fichier utilisateur
-- ✅ **Multiplateforme:** Fonctionne identiquement sur Windows/Mac/Linux
-- ✅ **Fallback:** Si le bundle n'a pas le fichier, utilise les defaults de config.js
+- [config-locations.js](config-locations.js) : emplacements et recherche, seul endroit à modifier pour changer un chemin.
+- [config.js](config.js) : lecture et fusion de `config.ini`.
+- [main.js](main.js) : `verifySSOStatus()`, `check-sso-file`, `initializeSAML()` (qui transmet le `sso.ini` retenu à `loadSAMLConfig`).

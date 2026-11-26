@@ -1,13 +1,18 @@
 /**
  * Configuration pour les environnements dev/prod
- * Charge la configuration depuis config.ini si disponible
- * En production, le fichier est dans le dossier utilisateur et n'est jamais écrasé
+ *
+ * Ordre de fusion (clé par clé) :
+ *   1. valeurs par défaut ci-dessous
+ *   2. config.ini ADMINISTRATEUR (déployé par poste, commun à tous les utilisateurs)
+ *   3. config.ini UTILISATEUR (optionnel, créé par l'utilisateur dans son profil)
+ * Voir config-locations.js pour les emplacements.
  */
 
 const packageJson = require('./package.json');
 const path = require('path');
 const fs = require('fs');
 const ini = require('ini');
+const locations = require('./config-locations');
 
 // Lire l'environnement depuis package.json config ou variable d'environnement
 const environment = process.env.APP_ENV || packageJson.config?.environment || 'dev';
@@ -41,88 +46,65 @@ const flushLogQueue = () => {
   }
 };
 
-// Charger la configuration .ini si elle existe
-let iniConfig = {};
 
-// Déterminer le chemin du fichier config.ini
-// Ordre de priorité:
-// 1. Répertoire utilisateur (userData) - pour personnalisation utilisateur
-// 2. Répertoire d'installation (bundle app) - pour déploiements centralisés
-// 3. Chemins de développement (seulement si app non packagée)
-const getConfigPath = () => {
-  const configPaths = [];
-  
-  // Priorité 1: Répertoire utilisateur (userData) - VÉRIFIÉ EN PREMIER
-  if (process.env.CELYAVOX_USER_CONFIG_PATH) {
-    configPaths.push(process.env.CELYAVOX_USER_CONFIG_PATH);
+// ============================================================
+// Lecture des fichiers config.ini (administrateur puis utilisateur)
+// ============================================================
+function readIniFile(filePath, label) {
+  if (!filePath) return {};
+  try {
+    const parsed = ini.parse(fs.readFileSync(filePath, 'utf-8'));
+    logMessage(`✅ config.ini ${label} chargé: ${filePath}`);
+    return parsed;
+  } catch (err) {
+    logMessage(`❌ Erreur lors de la lecture de config.ini ${label} (${filePath}): ${err.message}`, 'ERROR');
+    return {};
   }
-  
-  const homeDir = process.env.HOME || process.env.USERPROFILE;
-  if (homeDir) {
-    if (environment === 'dev') {
-      if (process.platform === 'linux') {
-        configPaths.push(path.join(homeDir, '.config', 'CelyaVox-dev', 'config.ini'));
-      } else if (process.platform === 'darwin') {
-        configPaths.push(path.join(homeDir, 'Library', 'Application Support', 'CelyaVox-dev', 'config.ini'));
-      } else if (process.platform === 'win32') {
-        const appData = process.env.APPDATA || homeDir;
-        configPaths.push(path.join(appData, 'CelyaVox-dev', 'config.ini'));
-      }
-    } else {
-      if (process.platform === 'linux') {
-        configPaths.push(path.join(homeDir, '.config', 'CelyaVox', 'config.ini'));
-      } else if (process.platform === 'darwin') {
-        configPaths.push(path.join(homeDir, 'Library', 'Application Support', 'CelyaVox', 'config.ini'));
-      } else if (process.platform === 'win32') {
-        const appData = process.env.APPDATA || homeDir;
-        configPaths.push(path.join(appData, 'CelyaVox', 'config.ini'));
-      }
-    }
-  }
-  
-  // Priorité 2: Répertoire d'installation (bundle app) - seulement avec process.resourcesPath
-  if (process.resourcesPath) {
-    configPaths.push(path.join(process.resourcesPath, 'resources', 'config.ini'));
-    configPaths.push(path.join(process.resourcesPath, 'config.ini'));
-  }
-  
-  // Priorité 3: Chemins de développement (seulement en DEV et si pas packagée)
-  // Note: Ne pas utiliser __dirname car il pointe à l'intérieur d'app.asar en packagé
-  if (environment === 'dev' && !process.resourcesPath) {
-    configPaths.push(path.join(__dirname, 'resources', 'config.ini'));
-    configPaths.push(path.join(__dirname, 'config.ini'));
-    configPaths.push(path.join(__dirname, 'config', 'config.ini'));
-  }
-  
-  return configPaths;
-};
+}
 
-// Charger le fichier config.ini
-const configPaths = getConfigPath();
+const searchPaths = locations.describeSearchPaths('config.ini');
+const adminConfigPath = locations.findAdminFile('config.ini');
+const userConfigPath = locations.findUserFile('config.ini');
+
 logMessage(`
 🔍 RECHERCHE CONFIG.INI (Environnement: ${environment})
-🔍 __dirname: ${__dirname}
-🔍 process.resourcesPath: ${process.resourcesPath || 'N/A'}
-🔍 Chemins à tester:
-${configPaths.map((p, i) => `  ${i + 1}. ${p}`).join('\n')}`);
+🔍 Administrateur (premier trouvé):
+${searchPaths.admin.map((p, i) => `  ${i + 1}. ${p}${p === adminConfigPath ? '  ✅' : ''}`).join('\n')}
+🔍 Utilisateur:
+  ${searchPaths.user}${userConfigPath ? '  ✅' : '  (absent)'}`);
 
-for (const configPath of configPaths) {
-  logMessage(`   Vérification: ${configPath}...`);
-  if (fs.existsSync(configPath)) {
-    logMessage(`   ✅ FICHIER TROUVÉ!`);
-    try {
-      const iniContent = fs.readFileSync(configPath, 'utf-8');
-      iniConfig = ini.parse(iniContent);
-      logMessage(`✅ Config INI chargée depuis: ${configPath}`);
-      // Exposer le répertoire contenant config.ini
-      global.configDirectory = path.dirname(configPath);
-    } catch (err) {
-      logMessage(`❌ Erreur lors de la lecture de config.ini: ${err.message}`, 'ERROR');
+const adminIni = readIniFile(adminConfigPath, 'ADMINISTRATEUR');
+const userIni = readIniFile(userConfigPath, 'UTILISATEUR');
+
+// Fusion clé par clé : l'utilisateur surcharge l'administrateur, section par section
+function mergeIni(base, override) {
+  const result = {};
+  for (const source of [base, override]) {
+    for (const [section, values] of Object.entries(source)) {
+      if (values && typeof values === 'object') {
+        result[section] = { ...(result[section] || {}), ...values };
+      } else {
+        result[section] = values;
+      }
     }
-    break;
-  } else {
-    logMessage(`   ❌ Fichier non trouvé`);
   }
+  return result;
+}
+
+const iniConfig = mergeIni(adminIni, userIni);
+
+// Répertoire des fichiers référencés par nom (profilePicture, CustomRingtone) :
+// celui du fichier qui définit ces clés, sinon celui de l'utilisateur, sinon celui de l'administrateur.
+function definesUiFile(parsed) {
+  return parsed.ui && (parsed.ui.profilePicture !== undefined || parsed.ui.CustomRingtone !== undefined);
+}
+let configDirectory;
+if (userConfigPath && definesUiFile(userIni)) {
+  configDirectory = path.dirname(userConfigPath);
+} else if (adminConfigPath && definesUiFile(adminIni)) {
+  configDirectory = path.dirname(adminConfigPath);
+} else {
+  configDirectory = path.dirname(userConfigPath || adminConfigPath || path.join(locations.getUserConfigDir(), 'config.ini'));
 }
 
 // Configuration par défaut pour chaque environnement
@@ -180,7 +162,7 @@ const currentConfig = config[environment] || config.dev;
 
 logMessage(`
 📋 FUSION CONFIG:
-INI trouvé:
+INI fusionné (administrateur ← utilisateur):
 ${JSON.stringify(iniConfig, null, 2)}
 
 Config par défaut (${environment}):
@@ -283,9 +265,14 @@ module.exports = {
   isProd: environment === 'prod',
   // Exposer la config INI pour débogage
   _iniConfig: iniConfig,
-  _configPath: configPaths,
-  // Répertoire contenant config.ini
-  configDirectory: global.configDirectory,
+  _configPath: { admin: adminConfigPath, user: userConfigPath },
+  // Répertoire où sont cherchés les fichiers référencés par nom (images, sonneries)
+  configDirectory,
+  // Répertoires dont le renderer peut lire des fichiers (read-file-as-base64)
+  allowedFileDirectories: [
+    adminConfigPath ? path.dirname(adminConfigPath) : null,
+    locations.getUserConfigDir()
+  ].filter(Boolean),
   // Exposer les paramètres de fenêtre
   window: mergedConfig.window || currentConfig.window,
   // Exposer les paramètres UI
@@ -293,121 +280,15 @@ module.exports = {
   // Exposer les paramètres Audio
   audio: mergedConfig.audio || currentConfig.audio,
   // Fonction pour vider la queue de logs
-  flushLogQueue,
-  // Exporter une fonction pour recharger la config (sera appelée depuis main.js après app.whenReady())
-  reloadConfig: function(appPath, resourcesPath) {
-    // Utiliser getConfigPath() pour avoir la même priorité de chemins qu'au démarrage
-    const updatedPaths = getConfigPath();
-    
-    // Charger le fichier config.ini depuis les chemins mis à jour
-    logMessage(`\n🔄 RECHARGEMENT CONFIG.INI APRÈS ELECTRON READY`);
-    logMessage(`🔍 Chemins à tester:`);
-    updatedPaths.forEach((p, i) => logMessage(`  ${i + 1}. ${p}`));
-    
-    let foundConfig = null;
-    for (const configPath of updatedPaths) {
-      if (fs.existsSync(configPath)) {
-        try {
-          const iniContent = fs.readFileSync(configPath, 'utf-8');
-          foundConfig = ini.parse(iniContent);
-          logMessage(`✅ Config INI RECHARGÉE depuis: ${configPath}`);
-          
-          // Fusionner la nouvelle config
-          this._remergeConfig(foundConfig);
-          return;
-        } catch (err) {
-          logMessage(`❌ Erreur lors de la lecture de config.ini: ${err.message}`, 'ERROR');
-        }
-      }
-    }
-    
-    if (!foundConfig) {
-      logMessage(`⚠️  Aucun config.ini trouvé aux chemins attendus`);
-    }
-  },
-  // Fonction interne pour refusionner la config
-  _remergeConfig: function(newIniConfig) {
-    iniConfig = newIniConfig;
-    
-    // Re-fusionner avec la config par défaut
-    if (iniConfig.window) {
-      if (iniConfig.window.width) {
-        mergedConfig.window.width = parseInt(iniConfig.window.width, 10) || currentConfig.window.width;
-      }
-      if (iniConfig.window.height) {
-        mergedConfig.window.height = parseInt(iniConfig.window.height, 10) || currentConfig.window.height;
-      }
-    }
-    
-    if (iniConfig.ui) {
-      logMessage(`  🎛️  Paramètres UI trouvés dans INI (reloadConfig): ${JSON.stringify(iniConfig.ui)}`);
-      if (iniConfig.ui.disableBuddies !== undefined) {
-        mergedConfig.ui.disableBuddies = iniConfig.ui.disableBuddies === '1' || iniConfig.ui.disableBuddies === true;
-        logMessage(`    ✅ disableBuddies: ${mergedConfig.ui.disableBuddies}`);
-      }
-      if (iniConfig.ui.disableDoNotDisturb !== undefined) {
-        mergedConfig.ui.disableDoNotDisturb = iniConfig.ui.disableDoNotDisturb === '1' || iniConfig.ui.disableDoNotDisturb === true;
-        logMessage(`    ✅ disableDoNotDisturb: ${mergedConfig.ui.disableDoNotDisturb}`);
-      }
-      if (iniConfig.ui.disableCallForward !== undefined) {
-        mergedConfig.ui.disableCallForward = iniConfig.ui.disableCallForward === '1' || iniConfig.ui.disableCallForward === true;
-        logMessage(`    ✅ disableCallForward: ${mergedConfig.ui.disableCallForward}`);
-      }
-      if (iniConfig.ui.disableGUISipAccount !== undefined) {
-        mergedConfig.ui.disableGUISipAccount = iniConfig.ui.disableGUISipAccount === '1' || iniConfig.ui.disableGUISipAccount === true;
-        logMessage(`    ✅ disableGUISipAccount: ${mergedConfig.ui.disableGUISipAccount}`);
-      }
-      if (iniConfig.ui.Notifications !== undefined) {
-        logMessage(`    🔍 DEBUG Notifications brut: "${iniConfig.ui.Notifications}" (type: ${typeof iniConfig.ui.Notifications})`);
-        mergedConfig.ui.Notifications = iniConfig.ui.Notifications === '1' || iniConfig.ui.Notifications === true;
-        logMessage(`    ✅ Notifications: ${mergedConfig.ui.Notifications}`);
-      }
-      if (iniConfig.ui.profilePicture !== undefined) {
-        mergedConfig.ui.profilePicture = iniConfig.ui.profilePicture;
-        logMessage(`    ✅ profilePicture: ${mergedConfig.ui.profilePicture}`);
-      }
-      if (iniConfig.ui.CustomRingtone !== undefined) {
-        mergedConfig.ui.CustomRingtone = iniConfig.ui.CustomRingtone;
-        logMessage(`    ✅ CustomRingtone: ${mergedConfig.ui.CustomRingtone}`);
-      }
-    } else {
-      logMessage(`  ⚠️  Aucun paramètre UI trouvé dans INI (reloadConfig) - iniConfig.ui est undefined`);
-    }
-    
-    if (iniConfig.audio) {
-      if (iniConfig.audio.ringerOutputLabel !== undefined) {
-        mergedConfig.audio.ringerOutputLabel = iniConfig.audio.ringerOutputLabel || null;
-      }
-      if (iniConfig.audio.ringerGain !== undefined) {
-        const gain = parseFloat(iniConfig.audio.ringerGain);
-        if (isFinite(gain)) {
-          mergedConfig.audio.ringerGain = Math.min(Math.max(gain, 0), 1);
-        }
-      }
-    }
-    
-    if (iniConfig.server) {
-      if (iniConfig.server.serverUrl) {
-        mergedConfig.serverUrl = iniConfig.server.serverUrl;
-      }
-    }
-    
-    if (iniConfig.app) {
-      if (iniConfig.app.appName) {
-        mergedConfig.appName = iniConfig.app.appName;
-      }
-      if (iniConfig.app.appId) {
-        mergedConfig.appId = iniConfig.app.appId;
-      }
-    }
-    
-    logMessage(`📋 Configuration refusionnée avec succès`);
-  }
+  flushLogQueue
 };
 
 logMessage(`
 ✨ CONFIG FINALE EXPORTÉE:
   Environnement: ${environment}
+  config.ini admin: ${adminConfigPath || 'aucun'}
+  config.ini utilisateur: ${userConfigPath || 'aucun'}
+  Répertoire fichiers: ${configDirectory}
   App Name: ${mergedConfig.appName}
   App ID: ${mergedConfig.appId}
   Server URL: ${mergedConfig.serverUrl}

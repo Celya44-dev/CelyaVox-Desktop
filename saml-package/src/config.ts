@@ -59,13 +59,20 @@ function ensureConfigDirectory(): string {
 
 /**
  * Load SAML configuration from sso.ini
- * Ordre de recherche :
- * 1. Répertoire d'installation (bundle app) - pour déploiements centralisés
- * 2. Répertoire utilisateur - pour personnalisation utilisateur
+ *
+ * @param explicitPath Chemin du sso.ini à utiliser. L'application principale le fournit
+ *   (config-locations.js : fichier administrateur, sinon fichier utilisateur).
+ *   Sans paramètre, ordre de recherche historique :
+ *   1. Répertoire d'installation (bundle app) - pour déploiements centralisés
+ *   2. Répertoire utilisateur - pour personnalisation utilisateur
  */
-export function loadSAMLConfig(): SAMLConfig {
+export function loadSAMLConfig(explicitPath?: string): SAMLConfig {
   // Ordre de priorité pour les chemins
   const possiblePaths: string[] = [];
+  
+  if (explicitPath) {
+    possiblePaths.push(explicitPath);
+  }
   
   // Priorité 1: Répertoire d'installation (bundle app)
   if (process.resourcesPath) {
